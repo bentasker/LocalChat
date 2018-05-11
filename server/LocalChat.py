@@ -9,7 +9,7 @@
 #
 
 from flask import Flask
-from flask import request
+from flask import request, make_response
 
 
 
@@ -22,36 +22,154 @@ app = Flask(__name__)
 
 
 
-@app.route('/', defaults={'path': ''})
-@app.route('/<path:path>')
+@app.route('/', defaults={'path': ''},methods=["POST"])
+@app.route('/<path:path>',methods=["POST"])
 def index(path):
     
     print "%.6f Request start" % (time.time())   # DEBUGONLY
     
-
-    reqdets = {
-            'hostname':request.host.lower(),
-            'request':path,
-            'client_ip':request.remote_addr,
-            'client_subnet': False,
-            'subnet_mask': False,
-            'sourcezone': False,
-            'altlocs': False,
-            'aliasedlocs': False,
-            'prefedge': False,
-            'choices': False,
-            'newurl': False,
-            'complete':False,
-            'retcode':0
-        }
-
-    a = msghandler.test()
+    reqdata =  request.get_data()
+    
+    try:
+        reqjson = json.loads(reqdata)
+    except:
+        return make_response("",400)
+    
+    a = msghandler.processSubmission(reqjson)
+    
+    # Check the status
+    if a in [400]:
+        response = make_response("",a)
+        return response
+        
     return json.dumps(a)
 
     
 
 
 class MsgHandler(object):
+
+
+    def __init__(self):
+        self.conn = False
+        self.cursor = False
+
+
+
+    def createDB(self):
+        ''' Create the in-memory database ready for use 
+        '''
+        self.conn = sqlite3.connect(':memory:')
+        self.cursor = self.conn.cursor()
+        
+        sql = """ CREATE TABLE rooms (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL UNIQUE,
+            owner TEXT NOT NULL,
+            pass TEXT NOT NULL
+        );
+        
+        
+        CREATE TABLE messages (
+            id INTEGER PRIMARY KEY,
+            ts INTEGER NOT NULL,
+            room INTEGER NOT NULL,
+            msg TEXT NOT NULL
+        );
+        
+        
+        CREATE TABLE users (
+            username TEXT NOT NULL,
+            room INTEGER NOT NULL,
+            PRIMARY KEY (username,room)
+        );
+        
+        """
+        
+        self.conn.executescript(sql)
+
+
+
+    def processSubmission(self,reqjson):
+        ''' Process an incoming request and route it to
+        the correct function
+        
+        '''
+        
+        if not self.conn or not self.cursor:
+            self.createDB()
+        
+        
+        print reqjson
+        if "action" not in reqjson or "payload" not in reqjson:
+            return 400
+        
+        
+        # Decrypt the payload
+        reqjson['payload'] = self.decrypt(reqjson['payload'])
+        
+        try:
+            reqjson['payload'] = json.loads(reqjson['payload'])
+        except:
+            return 400
+        
+        if reqjson['action'] == "createRoom":
+            return self.createRoom(reqjson)
+        
+        
+        
+        
+        
+
+    def decrypt(self,msg):
+        ''' This is currently just a placeholder
+        Will be updated later
+        '''
+        return msg
+
+
+    def createRoom(self,reqjson):
+        '''
+        
+        Payload should contain a JSON object consisting of
+        
+        roomName
+        owner
+        passhash
+        
+        e.g.
+        
+        curl -v -X POST http://127.0.0.1:8090/ -H "Content-Type: application/json" --data '{"action":"createRoom","payload":"{
+        \"roomName\":\"BenTest\",
+        \"owner\":\"ben\",
+        \"passhash\":\"abcdefg\"        
+        }"
+        
+        }'
+        
+        '''
+        print "Creating room %s" % (reqjson['payload'])
+        
+        # Create a tuple for sqlite3
+        t = (reqjson['payload']['roomName'],
+             reqjson['payload']['owner'],
+             reqjson['payload']['passhash'])
+        
+        try:
+            self.cursor.execute("INSERT INTO rooms (name,owner,pass) VALUES (?,?,?)",t)
+            roomid = self.cursor.lastrowid
+        except:
+            # Probably a duplicate name, but we don't want to give the other end a reason anyway
+            return 500
+        
+        return {
+                'status':'ok',
+                'roomid': roomid,
+                'name' : reqjson['payload']['roomName']
+            }
+        
+    
+
 
     def test(self):
         return ['foo']
