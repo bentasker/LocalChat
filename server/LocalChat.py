@@ -38,7 +38,7 @@ def index(path):
     a = msghandler.processSubmission(reqjson)
     
     # Check the status
-    if a in [400]:
+    if a in [400,403]:
         response = make_response("",a)
         return response
         
@@ -118,6 +118,10 @@ class MsgHandler(object):
         
         elif reqjson['action'] == "inviteUser":
             return self.inviteUser(reqjson)
+        
+        elif reqjson['action'] == 'sendMsg':
+            print "Send message"
+            return self.sendMsg(reqjson)
         
         
         
@@ -202,7 +206,60 @@ class MsgHandler(object):
                 "status":'ok'
             }
         
+    
+    
+    def sendMsg(self,reqjson):
+        ''' Push a message into a room
         
+        curl -v -X POST http://127.0.0.1:8090/ -H "Content-Type: application/json" --data '{"action":"sendMsg","payload":"{\"roomName\":\"BenTest\", \"msg\":\"ENCRYPTED-DATA\",\"user\":\"ben2\"}"}'
+        
+        '''
+        
+        print reqjson
+        if "user" not in reqjson['payload'] or not self.validateUser(reqjson['payload']):
+            return 403
+        
+        
+        if "roomName" not in reqjson['payload'] or "msg" not in reqjson['payload']:
+            return 400
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        print room
+        if not room:
+            return 400
+
+            
+        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,reqjson['payload']['msg']))
+        msgid = self.cursor.lastrowid
+        self.conn.commit()
+        
+        # Check the latest message ID for that room
+        self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
+        r = self.cursor.fetchone()
+        
+        if not r:
+            last = None
+        else:
+            last = r[0]
+        
+        return {
+                "status" : "ok",
+                "msgid" : msgid,
+                "last" : last
+            }
+        
+        
+    
+    
+    def validateUser(self,payload):
+        ''' Placeholder for now. Auth will be handled later
+        '''
+        if "user" not in payload:
+            return False
+        
+        return True
+        
+    
     def getRoomID(self,roomname):
         ''' Get a room's ID from its name
         '''
