@@ -166,6 +166,10 @@ class MsgHandler(object):
             # Probably a duplicate name, but we don't want to give the other end a reason anyway
             return 500
         
+        
+        self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['owner'],roomid))
+        self.conn.commit()
+        
         return {
                 'status':'ok',
                 'roomid': roomid,
@@ -193,7 +197,7 @@ class MsgHandler(object):
         
         # Otherwise, link the user in
         self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['user'],room))
-        
+        self.conn.commit()
         return {
                 "status":'ok'
             }
