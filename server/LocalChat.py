@@ -120,9 +120,11 @@ class MsgHandler(object):
             return self.inviteUser(reqjson)
         
         elif reqjson['action'] == 'sendMsg':
-            print "Send message"
             return self.sendMsg(reqjson)
         
+        elif reqjson['action'] == 'pollMsg':
+            return self.fetchMsgs(reqjson)
+         
         
         
         
@@ -215,8 +217,7 @@ class MsgHandler(object):
         
         '''
         
-        print reqjson
-        if "user" not in reqjson['payload'] or not self.validateUser(reqjson['payload']):
+        if not self.validateUser(reqjson['payload']):
             return 403
         
         
@@ -238,7 +239,7 @@ class MsgHandler(object):
         r = self.cursor.fetchone()
         
         if not r:
-            last = None
+            last = 0
         else:
             last = r[0]
         
@@ -249,7 +250,45 @@ class MsgHandler(object):
             }
         
         
+    def fetchMsgs(self,reqjson):
+        ''' Check to see if there are any new messages in the room
+        
+        curl -v -X POST http://127.0.0.1:8090/ -H "Content-Type: application/json" --data '{"action":"pollMsg","payload":"{\"roomName\":\"BenTest\", \"mylast\":1,\"user\":\"ben2\"}"}'
+        
+        '''
+        
+        if not self.validateUser(reqjson['payload']):
+            return 403
+
+        if "mylast" not in reqjson['payload']:
+            return 400
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        print room
+        if not room:
+            return 400        
+        
+        self.cursor.execute("""SELECT id,msg FROM messages
+            WHERE room=? AND
+            id > ?
+            ORDER BY ts ASC           
+            """,(room,reqjson['payload']['mylast']))
+        
+        r = self.cursor.fetchall()
+        
+        if not r:
+            # No changes
+            return {"status":"unchanged","last":reqjson['payload']['mylast']}
+        
+        # Otherwise, return the messages
+        return {"status":"updated",
+                "messages" : r
+                }
     
+    
+        
+        
+        
     
     def validateUser(self,payload):
         ''' Placeholder for now. Auth will be handled later
