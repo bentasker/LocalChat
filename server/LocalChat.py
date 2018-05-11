@@ -116,6 +116,9 @@ class MsgHandler(object):
         if reqjson['action'] == "createRoom":
             return self.createRoom(reqjson)
         
+        elif reqjson['action'] == "inviteUser":
+            return self.inviteUser(reqjson)
+        
         
         
         
@@ -126,6 +129,7 @@ class MsgHandler(object):
         Will be updated later
         '''
         return msg
+
 
 
     def createRoom(self,reqjson):
@@ -168,6 +172,44 @@ class MsgHandler(object):
                 'name' : reqjson['payload']['roomName']
             }
         
+    
+
+
+    def inviteUser(self,reqjson):
+        ''' Link a username into a room
+
+
+        curl -v -X POST http://127.0.0.1:8090/ -H "Content-Type: application/json" --data '{"action":"inviteUser","payload":"{\"roomName\":\"BenTest\",\"user\":\"ben2\"}"}'
+
+        '''
+        
+        if "roomName" not in reqjson['payload']:
+            return 400
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        
+        if not room:
+            return 400
+        
+        # Otherwise, link the user in
+        self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['user'],room))
+        
+        return {
+                "status":'ok'
+            }
+        
+        
+    def getRoomID(self,roomname):
+        ''' Get a room's ID from its name
+        '''
+        t = (roomname,)
+        self.cursor.execute("SELECT id from rooms where name=?",t)
+        r = self.cursor.fetchone()
+        
+        if not r:
+            return False
+        
+        return r[0]
     
 
 
