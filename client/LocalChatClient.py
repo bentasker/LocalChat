@@ -70,7 +70,7 @@ class msgHandler(object):
             color = "green"
             upstruser = msgbody['user'] # Temporary placeholder
             
-            if upstruser == USER:
+            if upstruser == self.user:
                 # One of our own, change the color
                 color = "blue"
             
