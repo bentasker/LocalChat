@@ -235,6 +235,16 @@ class MsgHandler(object):
             return { "status": "NOK" }
         else:
             
+            
+            # Tidy older messages away.
+            #
+            # We do this so that a user who joins can't then send a poll with last:0 to retrieve the full history
+            #
+            # Basically, anything older than 10 seconds should go. Users who were already present will be able
+            # to scroll up and down in their client anyway
+            self.tidyMsgs(time.time()-10,room)
+            
+            
             # Push a message to the room to note that the user joined
             
             m = {
@@ -245,6 +255,7 @@ class MsgHandler(object):
             self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
             msgid = self.cursor.lastrowid
             self.conn.commit()
+            
             # Check the latest message ID for that room
             self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
             r = self.cursor.fetchone()
@@ -362,6 +373,20 @@ class MsgHandler(object):
         
         return r[0]
     
+
+    def tidyMsgs(self,thresholdtime,room=False):
+        ''' Remove messages older than the threshold time
+        '''
+        
+        if room:
+            # Tidy from a specific room
+            self.cursor.execute("DELETE FROM messages where ts < ? and room = ?",(thresholdtime,room))
+            self.conn.commit()
+            
+        else:
+            self.cursor.execute("DELETE FROM messages where ts < ?",(thresholdtime,))
+            self.conn.commit()
+
 
 
     def test(self):
