@@ -217,14 +217,15 @@ class msgHandler(object):
     
 
 
-    def inviteUser(self,room,passw,user):
+    def inviteUser(self,user):
         ''' Invite a user into a room
         
         #TODO - Authentication
         '''
         
-        payload = {"roomName": room, 
-                   "user": user,
+        payload = {"roomName": self.room, 
+                   "user": self.user,
+                   "invite": user
                    }
         
         request = {"action":"inviteUser",
@@ -381,7 +382,7 @@ just extend with do_something  method to handle your commands"""
                 return
         
             if cmd == "room":
-                # /room [create|invite] [roomname] [roompass] [[user]]
+                # /room create [roomname] [roompass] [[user]]
                 if args[0] == "create":
                     
                     if len(args) < 4:
@@ -397,16 +398,16 @@ just extend with do_something  method to handle your commands"""
                     return
                 
                 elif args[0] == "invite":
-                    if len(args) < 4:
+                    if len(args) < 2:
                         raise InvalidCommand(line)
                     
-                    n = msg.inviteUser(args[1],args[2],args[3])
+                    n = msg.inviteUser(args[1])
                     if not n:
                         raise UnableTo('invite user',line)
                         return
                     
                     global c
-                    c.output('User %s may now join room %s' %(args[1],args[3]))
+                    c.output('User %s may now join room' %(args[1],))
                     return                                        
                     
 
