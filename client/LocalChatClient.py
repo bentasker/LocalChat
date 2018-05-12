@@ -225,6 +225,25 @@ class msgHandler(object):
         return resp['name']
     
 
+    def closeRoom(self):
+        if not self.room:
+            return False
+
+        payload = {"roomName": self.room, 
+                   "user": self.user,
+                   }
+        
+        request = {"action":"closeRoom",
+                   "payload": json.dumps(payload)
+                   }        
+
+        resp = self.sendRequest(request)
+        if resp == "BROKENLINK" or resp['status'] != "ok":
+            return False
+        
+        return True
+        
+        
 
     def inviteUser(self,user):
         ''' Invite a user into a room
@@ -408,6 +427,18 @@ just extend with do_something  method to handle your commands"""
                 return
         
             if cmd == "room":
+                
+                # /room close [roompass]
+                if args[0] == "close":
+                    if len(args) < 2:
+                        raise InvalidCommand('/room close [pass]')
+                    
+                    if not msg.closeRoom():
+                        raise UnableTo('Close Room','')
+                                        
+                    return
+                
+                
                 # /room create [roomname] [roompass] [[user]]
                 if args[0] == "create":
                     
@@ -469,6 +500,7 @@ just extend with do_something  method to handle your commands"""
             
             /kick [user]                                                Kick a user out of the room (they can return)
             /ban [user]                                                 Kick a user out and disinvite them (they cannot return)
+            /room close [roompass]                                      Kick all users out and close the room
             
             Once in a room, to send a message, just type it.
             

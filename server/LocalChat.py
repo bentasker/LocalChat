@@ -116,6 +116,9 @@ class MsgHandler(object):
         if reqjson['action'] == "createRoom":
             return self.createRoom(reqjson)
         
+        if reqjson['action'] == "closeRoom":
+            return self.closeRoom(reqjson)
+        
         elif reqjson['action'] == "joinRoom":
             return self.processjoinRoom(reqjson)
         
@@ -195,6 +198,50 @@ class MsgHandler(object):
             }
         
     
+
+    def closeRoom(self,reqjson):
+        ''' Close a room.
+        
+        Means we need to
+        
+        - Ban all the users
+        - Scrub the message queue
+        - Remove the room record
+        '''
+        
+        if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload']:
+            return 400
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        
+        if not room:
+            return 400
+        
+        
+        # Check the requesting user is the admin
+        self.cursor.execute("SELECT * from rooms where id=? and owner=?",(room,reqjson["payload"]["user"]))
+        n = self.cursor.fetchone()
+        
+        if not n:
+            return 403
+        
+        m = {
+            "user":"SYSTEM",
+            "text":"Room has been closed. Buh-Bye"
+        }
+        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m))) 
+        self.conn.commit()
+        
+        self.cursor.execute("DELETE FROM users where room=?",(room,))
+        self.cursor.execute("DELETE FROM rooms where id=?",(room,))
+        self.cursor.execute("DELETE FROM messages where room=?",(room,))
+        self.conn.commit()
+        
+        return { "status" : "ok" }
+    
+        
+           
+        
 
 
     def inviteUser(self,reqjson):
