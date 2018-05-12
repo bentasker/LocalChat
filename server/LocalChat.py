@@ -219,6 +219,18 @@ class MsgHandler(object):
             return 403
         
         
+        if reqjson['payload']['invite'] == "SYSTEM":
+            # Push a notification into the group
+            m = {
+                    "user":"SYSTEM",
+                    "text":"ALERT: User %s tried to invite SYSTEM" % (reqjson['payload']['user'])
+                }
+            self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m))) 
+            self.conn.commit()
+            return 403
+       
+        
+        
         # Otherwise, link the user in
         self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['invite'],room))
         
@@ -300,6 +312,9 @@ class MsgHandler(object):
         if not room:
             return 400
         
+        
+        if reqjson["payload"]["user"] == "SYSTEM":
+            return 403
         
         # Check whether that user is authorised to connect to that room
         self.cursor.execute("SELECT username, room from users where username=? and room=?",(reqjson['payload']['user'],room))
