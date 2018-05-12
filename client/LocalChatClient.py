@@ -62,30 +62,62 @@ class msgHandler(object):
         # Otherwise, process the messages
         for i in resp["messages"]:
             self.last = i[0]
-            msgbody = self.decrypt(i[1])
+            msgbody = json.loads(self.decrypt(i[1]))
             
             # TODO - We'll need to json decode and extract the sending user's name
             # but not currently including that info in my curl tests. Also means test that part of the next block
             
             color = "green"
-            upstruser = 'foo' # Temporary placeholder
+            upstruser = msgbody['user'] # Temporary placeholder
             
             if upstruser == USER:
                 # One of our own, change the color
-                color = "red"
+                color = "blue"
             
             ts = dt.datetime.utcfromtimestamp(i[2]).strftime("[%H:%M:%S]")
             
             line = [
                 ts, # timestamp
                 "%s>" % (upstruser,), # To be replaced later
-                msgbody
+                msgbody['text']
                 ]
             
             to_print.append([color,' '.join(line)])
         
         return to_print
         
+        
+    def sendMsg(self,line):
+        ''' Send a message 
+        '''
+        
+        if not self.room:
+            # We're not in a room. Abort
+            return False
+        
+        # Otherwise, build a payload
+        
+        
+        msg = {
+            'user': self.user,
+            'text': line
+            }
+        
+        payload = {"roomName": self.room, 
+                   "msg":self.encrypt(json.dumps(msg)),
+                   "user": self.user
+                   }
+        
+        request = {"action":"sendMsg",
+                   "payload": json.dumps(payload)
+                   }
+
+        resp = self.sendRequest(request)        
+        
+        if resp['status'] == "ok":
+            return True
+        
+        return False
         
 
 
@@ -109,12 +141,16 @@ class msgHandler(object):
         return msg
     
 
+    def encrypt(self,msg):
+        ''' Placeholder
+        '''
+        return msg
 
 
 
-class UnknownCommand(Exception):
+class NotInRoom(Exception):
     def __init__(self,cmd):
-        Exception.__init__(self,'Uknown command: %s'%cmd)
+        Exception.__init__(self,'Message not sent')
 
 class Command(object):
     """ Base class to manage commands in commander
@@ -126,6 +162,7 @@ just extend with do_something  method to handle your commands"""
         self._help_cmd=help_commands
         
     def __call__(self,line):
+        global msg
         tokens=line.split()
         cmd=tokens[0].lower()
         args=tokens[1:]
@@ -136,7 +173,11 @@ just extend with do_something  method to handle your commands"""
         elif hasattr(self, 'do_'+cmd):
             return getattr(self, 'do_'+cmd)(*args)
         else:
-            raise UnknownCommand(cmd)
+            # If it's not a command, then we're trying to send a message
+            r = msg.sendMsg(line)
+            if not r:
+                raise NotInRoom(line)
+            
         
     def help(self,cmd=None):
         def std_help():
