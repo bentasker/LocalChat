@@ -217,6 +217,27 @@ class msgHandler(object):
     
 
 
+    def inviteUser(self,room,passw,user):
+        ''' Invite a user into a room
+        
+        #TODO - Authentication
+        '''
+        
+        payload = {"roomName": room, 
+                   "user": user,
+                   }
+        
+        request = {"action":"inviteUser",
+                   "payload": json.dumps(payload)
+                   }    
+        
+        resp = self.sendRequest(request)
+
+        if resp == "BROKENLINK" or resp['status'] != "ok":
+            return False
+        
+        return True
+
 
     def sendRequest(self,data):
         data = json.dumps(data)
@@ -321,6 +342,19 @@ just extend with do_something  method to handle your commands"""
                     global c
                     c.output('Created Room %s' %(n))
                     return
+                
+                elif args[0] == "invite":
+                    if len(args) < 4:
+                        raise InvalidCommand(line)
+                    
+                    n = msg.inviteUser(args[1],args[2],args[3])
+                    if not n:
+                        raise UnableTo('invite user',line)
+                        return
+                    
+                    global c
+                    c.output('User %s may now join room %s' %(args[1],args[3]))
+                    return                                        
                     
 
         if cmd in self._quit_cmd:
