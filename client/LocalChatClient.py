@@ -12,6 +12,88 @@ from collections import deque
 from threading import Thread
 import threading
 
+import json
+import urllib2
+
+# We'll get these from the commandline later
+USER='ben2'
+SERVER='http://127.0.0.1:8090'
+ROOMNAME='BenTest'
+
+
+class msgHandler(object):
+    
+    def __init__(self):
+        self.last = 0
+        self.user = USER
+        self.server = SERVER
+        self.room = ROOMNAME
+    
+    
+    def pollForMessage(self):
+        
+        if not self.room:
+            # We're not connected to a room
+            return False
+        
+        
+        payload = {"roomName": self.room, 
+                   "mylast":self.last,
+                   "user": self.user
+                   }
+        
+        request = {"action":"pollMsg",
+                   "payload": json.dumps(payload)
+                   }
+
+        resp = self.sendRequest(request)
+        
+        if resp == "BROKENLINK":
+            return resp
+        
+        
+        if resp['status'] == "unchanged":
+            return False
+        
+        to_print = []
+        # Otherwise, process the messages
+        for i in resp["messages"]:
+            self.last = i[0]
+            msgbody = self.decrypt(i[1])
+            
+            # TODO - We'll need to json decode and extract the sending user's name
+            # but not currently including that info in my curl tests
+            
+            to_print.append(msgbody)
+        
+        return to_print
+        
+        
+
+
+    def sendRequest(self,data):
+        data = json.dumps(data)
+        
+        try:
+            req = urllib2.Request(self.server, data, {'Content-Type': 'application/json'})
+            f = urllib2.urlopen(req)
+            response = f.read()
+            f.close()
+            return json.loads(response)
+        except:
+            return "BROKENLINK"
+
+
+
+    def decrypt(self,msg):
+        ''' Placeholder
+        '''
+        return msg
+    
+
+
+
+
 class UnknownCommand(Exception):
     def __init__(self,cmd):
         Exception.__init__(self,'Uknown command: %s'%cmd)
@@ -200,8 +282,15 @@ You can also asynchronously output messages with Commander.output('message') """
             self.switch_focus()
         return urwid.Frame.keypress(self, size, key)
         
+
+
     
 if __name__=='__main__':
+    
+    
+    msg = msgHandler()
+    
+    
     class TestCmd(Command):
         def do_echo(self, *args):
             '''echo - Just echos all arguments'''
@@ -209,14 +298,23 @@ if __name__=='__main__':
         def do_raise(self, *args):
             raise Exception('Some Error')
         
-    c=Commander('Test', cmd_cb=TestCmd())
+    c=Commander('LocalChat', cmd_cb=TestCmd())
     
     #Test asynch output -  e.g. comming from different thread
     import time
     def run():
         while True:
             time.sleep(1)
-            c.output('Tick', 'green')
+            
+            m = msg.pollForMessage()
+            
+            if m == "BROKENLINK":
+                c.output("Server went away", 'Red')
+                
+            if m:
+                for i in m:
+                    c.output(i, 'green')
+                
     t=Thread(target=run)
     t.daemon=True
     t.start()
