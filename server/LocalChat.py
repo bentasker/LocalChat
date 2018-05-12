@@ -116,6 +116,9 @@ class MsgHandler(object):
         if reqjson['action'] == "createRoom":
             return self.createRoom(reqjson)
         
+        elif reqjson['action'] == "joinRoom":
+            return self.processjoinRoom(reqjson)
+        
         elif reqjson['action'] == "inviteUser":
             return self.inviteUser(reqjson)
         
@@ -210,6 +213,54 @@ class MsgHandler(object):
         
     
     
+    def processjoinRoom(self,reqjson):
+        ''' Process a request from a user to login to a room
+        
+        Not yet defined the authentication mechanism to use, so that's a TODO
+        '''
+        if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload']:
+            return 400
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        
+        if not room:
+            return 400
+        
+        
+        # Check whether that user is authorised to connect to that room
+        self.cursor.execute("SELECT username, room from users where username=? and room=?",(reqjson['payload']['user'],room))
+        r = self.cursor.fetchone()
+        
+        if not r:
+            return { "status": "NOK" }
+        else:
+            
+            # Push a message to the room to note that the user joined
+            
+            m = {
+                    "user":"SYSTEM",
+                    "text":"User %s joined the room" % (reqjson['payload']['user'])
+                }
+            
+            self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
+            msgid = self.cursor.lastrowid
+            self.conn.commit()
+            # Check the latest message ID for that room
+            self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
+            r = self.cursor.fetchone()
+            
+            if not r:
+                last = 0
+            else:
+                last = r[0]
+                   
+            
+            return {"status":"ok","last":last}
+        
+        
+        
+    
+    
     def sendMsg(self,reqjson):
         ''' Push a message into a room
         
@@ -268,7 +319,7 @@ class MsgHandler(object):
         if not room:
             return 400        
         
-        self.cursor.execute("""SELECT id,msg FROM messages
+        self.cursor.execute("""SELECT id,msg,ts FROM messages
             WHERE room=? AND
             id > ?
             ORDER BY ts ASC           

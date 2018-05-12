@@ -28,9 +28,9 @@ class msgHandler(object):
     
     def __init__(self):
         self.last = 0
-        self.user = USER
+        self.user = False
         self.server = SERVER
-        self.room = ROOMNAME
+        self.room = False
     
     
     def pollForMessage(self):
@@ -73,6 +73,10 @@ class msgHandler(object):
             if upstruser == USER:
                 # One of our own, change the color
                 color = "blue"
+            
+            elif upstruser == "SYSTEM":
+                color = "magenta"
+                
             
             ts = dt.datetime.utcfromtimestamp(i[2]).strftime("[%H:%M:%S]")
             
@@ -121,6 +125,46 @@ class msgHandler(object):
         
 
 
+    def joinRoom(self,user,room,passw):
+        ''' Join a room
+        '''
+        
+        # TODO - this functionality isn't on the 
+        # backend yet, so haven't defined the hashing mechanism etc
+        passhash = passw
+        
+        payload = {"roomName": room, 
+                   "passhash": passhash,
+                   "user": user
+                   }
+        
+        request = {"action":"joinRoom",
+                   "payload": json.dumps(payload)
+                   }        
+
+
+        resp = self.sendRequest(request)
+
+        if resp == "BROKENLINK" or resp['status'] != "ok":
+            return False
+        
+        
+        self.room = room
+        self.user = user
+        self.last = resp['last']
+        return True
+
+
+
+
+    def leaveRoom(self):
+        ''' Placeholder '''
+        if not self.room:
+            return False
+        
+        
+
+
     def sendRequest(self,data):
         data = json.dumps(data)
         
@@ -152,6 +196,17 @@ class NotInRoom(Exception):
     def __init__(self,cmd):
         Exception.__init__(self,'Message not sent')
 
+
+class UnableToJoin(Exception):
+    def __init__(self,cmd):
+        Exception.__init__(self,'Could not Join: %s' % (cmd,))
+
+
+class InvalidCommand(Exception):
+    def __init__(self,cmd):
+        Exception.__init__(self,'Command is invalid: %s' % (cmd,))
+
+
 class Command(object):
     """ Base class to manage commands in commander
 similar to cmd.Cmd in standard library
@@ -166,6 +221,23 @@ just extend with do_something  method to handle your commands"""
         tokens=line.split()
         cmd=tokens[0].lower()
         args=tokens[1:]
+        
+        if cmd[0] == "/":
+            # It's a command
+            cmd = cmd[1:]
+            
+            if cmd == "join":
+                # /join [username] [room] [password]
+                
+                if len(args) < 3:
+                    raise InvalidCommand(line)
+                
+                if not msg.joinRoom(args[0],args[1],args[2]):
+                    raise UnableToJoin(line)
+                return
+            
+        
+
         if cmd in self._quit_cmd:
             return Commander.Exit
         elif cmd in self._help_cmd:
