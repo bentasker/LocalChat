@@ -15,6 +15,7 @@ import threading
 
 import json
 import urllib2
+import ssl
 
 import datetime as dt
 
@@ -24,7 +25,7 @@ import gnupg
 
 # We'll get these from the commandline later
 USER='ben2'
-SERVER='http://127.0.0.1:8090'
+SERVER='https://127.0.0.1:8090'
 ROOMNAME='BenTest'
 
 
@@ -281,8 +282,15 @@ class msgHandler(object):
         data = json.dumps(data)
         
         try:
+            # The cert the other end will be considered invalid
+            #
+            # Ignore it
+            ctx = ssl.create_default_context()
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+
             req = urllib2.Request(self.server, data, {'Content-Type': 'application/json'})
-            f = urllib2.urlopen(req)
+            f = urllib2.urlopen(req,context=ctx)
             response = f.read()
             f.close()
             return json.loads(response)
