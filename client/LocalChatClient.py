@@ -239,6 +239,35 @@ class msgHandler(object):
         return True
 
 
+
+    def kickUser(self,user,ban=False):
+        ''' Kick a user out of the room
+        '''
+        
+        action = 'banUser'
+        
+        if not ban:
+            action = 'kickUser'
+        
+        payload = {"roomName": self.room, 
+                   "user": self.user,
+                   "kick": user
+                   }
+        
+        request = {"action":action,
+                   "payload": json.dumps(payload)
+                   }    
+                
+        resp = self.sendRequest(request)
+
+        if resp == "BROKENLINK" or resp['status'] != "ok":
+            return False
+        
+        return True
+
+        
+        
+
     def sendRequest(self,data):
         data = json.dumps(data)
         
@@ -295,11 +324,6 @@ just extend with do_something  method to handle your commands"""
     def __init__(self,quit_commands=['q','quit','exit'], help_commands=['help','?', 'h']):
         self._quit_cmd=quit_commands
         self._help_cmd=help_commands
-        self._controlcommands = [
-            "join","leave","room"
-            
-            
-            ]
         
     def __call__(self,line):
         global msg
@@ -311,6 +335,18 @@ just extend with do_something  method to handle your commands"""
             # It's a command
             cmd = cmd[1:]
             
+            
+            if cmd == "ban":
+                # /kick [user]
+                
+                if len(args) < 1:
+                    raise InvalidCommand(line)
+                
+                
+                m = msg.kickUser(args[0],True)
+                return
+                        
+            
             if cmd == "join":
                 # /join [username] [room] [password]
                 
@@ -321,6 +357,18 @@ just extend with do_something  method to handle your commands"""
                 if not msg.joinRoom(args[0],args[1],args[2]):
                     raise UnableTo('join',line)
                 return
+            
+            
+            if cmd == "kick":
+                # /kick [user]
+                
+                if len(args) < 1:
+                    raise InvalidCommand(line)
+                
+                
+                m = msg.kickUser(args[0])
+                return
+            
             
             if cmd == "leave":
                 # /leave

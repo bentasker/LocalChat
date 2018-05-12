@@ -122,9 +122,15 @@ class MsgHandler(object):
         
         elif reqjson['action'] == "leaveRoom":
             return self.processleaveRoom(reqjson)
+
+        elif reqjson['action'] == "banUser":
+            return self.kickUser(reqjson,True)
         
         elif reqjson['action'] == "inviteUser":
             return self.inviteUser(reqjson)
+        
+        elif reqjson['action'] == "kickUser":
+            return self.kickUser(reqjson,False)
         
         elif reqjson['action'] == 'sendMsg':
             return self.sendMsg(reqjson)
@@ -215,6 +221,56 @@ class MsgHandler(object):
                 "status":'ok'
             }
         
+    
+    
+    def kickUser(self,reqjson,ban=False):
+        ''' Kick a user out of room
+        
+        Default is just to boot them out, but can also remove their authorisation to enter
+        '''
+        
+        if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload'] or "kick" not in reqjson['payload']:
+            return 400
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        
+        if not room:
+            return 400
+        
+        
+        # Check the requesting user is the admin
+        self.cursor.execute("SELECT * from rooms where id=? and owner=?",(room,reqjson["payload"]["user"]))
+        n = self.cursor.fetchone()
+        
+        if not n:
+            return 403
+        
+        
+        
+        self.cursor.execute("UPDATE users set active=0 where room=? and username=?",(room,reqjson["payload"]["kick"]))
+        m = {
+                "user":"SYSTEM",
+                "text":"User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick'])
+            }
+        
+        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
+        msgid = self.cursor.lastrowid
+        self.conn.commit()
+                    
+        if ban:
+            # If we're banning them, also need to disinvite them
+            self.cursor.execute("DELETE from users where room=? and username=?",(room,reqjson["payload"]["kick"]))
+            m = {
+                    "user":"SYSTEM",
+                    "text":"User %s banned %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick'])
+                }
+            
+            self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
+            self.conn.commit()
+        
+        return { "status" : "ok" }
+    
+    
     
     
     def processjoinRoom(self,reqjson):
