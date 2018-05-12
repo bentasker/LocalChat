@@ -214,9 +214,22 @@ class MsgHandler(object):
         if not room:
             return 400
         
+        if not self.validateUser(reqjson['payload']):
+            return 403
+        
+        
         # Otherwise, link the user in
-        self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['user'],room))
-        self.conn.commit()
+        self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['invite'],room))
+        
+        # Push a notification into the group
+        m = {
+                "user":"SYSTEM",
+                "text":"User %s invited %s to the room" % (reqjson['payload']['user'],reqjson['payload']['invite'])
+            }
+        
+        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))        
+        self.conn.commit()        
+        
         return {
                 "status":'ok'
             }
