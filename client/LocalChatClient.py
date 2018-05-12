@@ -433,7 +433,16 @@ just extend with do_something  method to handle your commands"""
             
             /join [username] [room] [password]                          Join a room
             /leave                                                      Leave current room
-            /room [create|invite] [roomname] [roompass] [[user]]        New room management 
+            /room create [roomname] [roompass] [admin user]             New room management 
+            
+            
+            /room invite [user]                                         Invite a user into the current room
+            
+            
+            Room Admin commands:
+            
+            /kick [user]                                                Kick a user out of the room (they can return)
+            /ban [user]                                                 Kick a user out and disinvite them (they cannot return)
             
             Once in a room, to send a message, just type it.
             
