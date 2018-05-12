@@ -15,6 +15,9 @@ import threading
 import json
 import urllib2
 
+import datetime as dt
+
+
 # We'll get these from the commandline later
 USER='ben2'
 SERVER='http://127.0.0.1:8090'
@@ -62,9 +65,24 @@ class msgHandler(object):
             msgbody = self.decrypt(i[1])
             
             # TODO - We'll need to json decode and extract the sending user's name
-            # but not currently including that info in my curl tests
+            # but not currently including that info in my curl tests. Also means test that part of the next block
             
-            to_print.append(msgbody)
+            color = "green"
+            upstruser = 'foo' # Temporary placeholder
+            
+            if upstruser == USER:
+                # One of our own, change the color
+                color = "red"
+            
+            ts = dt.datetime.utcfromtimestamp(i[2]).strftime("[%H:%M:%S]")
+            
+            line = [
+                ts, # timestamp
+                "%s>" % (upstruser,), # To be replaced later
+                msgbody
+                ]
+            
+            to_print.append([color,' '.join(line)])
         
         return to_print
         
@@ -310,10 +328,11 @@ if __name__=='__main__':
             
             if m == "BROKENLINK":
                 c.output("Server went away", 'Red')
+                continue
                 
             if m:
                 for i in m:
-                    c.output(i, 'green')
+                    c.output(i[1], i[0])
                 
     t=Thread(target=run)
     t.daemon=True
