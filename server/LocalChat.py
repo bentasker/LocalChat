@@ -81,6 +81,7 @@ class MsgHandler(object):
         CREATE TABLE users (
             username TEXT NOT NULL,
             room INTEGER NOT NULL,
+            active INTEGER DEFAULT 0,
             PRIMARY KEY (username,room)
         );
         
@@ -265,6 +266,10 @@ class MsgHandler(object):
             else:
                 last = r[0]
                    
+            # Mark the user as active in the users table
+            self.cursor.execute("UPDATE users set active=1 where username=? and room=?", (reqjson['payload']['user'],room))
+            self.conn.commit()
+            
             
             return {"status":"ok","last":last}
         
@@ -353,13 +358,28 @@ class MsgHandler(object):
         
     
     def validateUser(self,payload):
-        ''' Placeholder for now. Auth will be handled later
+        ''' Placeholder for now. Auth will be handled in more depth later
         '''
-        if "user" not in payload:
+        if "user" not in payload or "roomName" not in payload:
+            return False
+        
+        
+        room = self.getRoomID(payload["roomName"])
+        if not room:
+            return 400        
+        
+        
+        
+        # Check whether the user has been marked as active
+        self.cursor.execute("SELECT username, room from users where username=? and room=? and active=1",(payload['user'],room))
+        r = self.cursor.fetchone()
+        
+        if not r:
             return False
         
         return True
-        
+
+
     
     def getRoomID(self,roomname):
         ''' Get a room's ID from its name
