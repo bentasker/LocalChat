@@ -131,7 +131,7 @@ class msgHandler(object):
         
         # TODO - this functionality isn't on the 
         # backend yet, so haven't defined the hashing mechanism etc
-        passhash = passw
+        passhash = self.hashpw(passw)
         
         payload = {"roomName": room, 
                    "passhash": passhash,
@@ -185,6 +185,39 @@ class msgHandler(object):
                 
 
 
+    def createRoom(self,room,passw,user=False):
+        ''' Create a new room
+        '''
+        
+        if not user and not self.user:
+            return False
+        
+        if not user:
+            user = self.user
+        
+        # Room passwords may well go way at some point, but honour the
+        # api structure for now
+        passhash = self.hashpw(passw)
+        
+        payload = {"roomName": room, 
+                   "owner": user,
+                   "passhash": passhash
+                   }
+        
+        request = {"action":"createRoom",
+                   "payload": json.dumps(payload)
+                   }        
+        
+        resp = self.sendRequest(request)
+
+        if resp == "BROKENLINK" or resp['status'] != "ok":
+            return False
+        
+        return resp['name']
+    
+
+
+
     def sendRequest(self,data):
         data = json.dumps(data)
         
@@ -209,6 +242,12 @@ class msgHandler(object):
         ''' Placeholder
         '''
         return msg
+
+
+    def hashpw(self,passw):
+        ''' Placeholder
+        '''
+        return passw
 
 
 
@@ -251,6 +290,7 @@ just extend with do_something  method to handle your commands"""
                 
                 if len(args) < 3:
                     raise InvalidCommand(line)
+                    return
                 
                 if not msg.joinRoom(args[0],args[1],args[2]):
                     raise UnableTo('join',line)
@@ -260,11 +300,28 @@ just extend with do_something  method to handle your commands"""
                 # /leave
                 if not msg.leaveRoom():
                     raise UnableTo('leave',line)
+                    return
                 
                 global c
                 c.output('Left the room','magenta')
                 return
         
+            if cmd == "room":
+                # /room [create|invite] [roomname] [roompass] [[user]]
+                if args[0] == "create":
+                    
+                    if len(args) < 4:
+                        args[3] = False
+                    
+                    n = msg.createRoom(args[1],args[2],args[3])
+                    if not n:
+                        raise UnableTo('create room',line)
+                        return
+                    
+                    global c
+                    c.output('Created Room %s' %(n))
+                    return
+                    
 
         if cmd in self._quit_cmd:
             return Commander.Exit
