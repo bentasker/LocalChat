@@ -434,16 +434,20 @@ if __name__=='__main__':
     #Test asynch output -  e.g. comming from different thread
     import time
     def run():
+        state=1
         while True:
             time.sleep(1)
             
             m = msg.pollForMessage()
             
             if m == "BROKENLINK":
-                c.output("Server went away", 'Red')
+                if state == 1:
+                    c.output("Server went away", 'Red')
+                    state = 0
                 continue
                 
             if m:
+                state = 1
                 for i in m:
                     c.output(i[1], i[0])
                 
