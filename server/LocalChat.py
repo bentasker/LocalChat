@@ -71,7 +71,7 @@ class MsgHandler(object):
         
         
         CREATE TABLE messages (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts INTEGER NOT NULL,
             room INTEGER NOT NULL,
             msg TEXT NOT NULL
