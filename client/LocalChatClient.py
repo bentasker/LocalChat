@@ -5,6 +5,7 @@
 #
 # apt-get install:
 #     python-urwid
+#     python-gnupg
 
 
 import urwid
@@ -16,6 +17,9 @@ import json
 import urllib2
 
 import datetime as dt
+
+import gnupg
+
 
 
 # We'll get these from the commandline later
@@ -31,6 +35,8 @@ class msgHandler(object):
         self.user = False
         self.server = SERVER
         self.room = False
+        self.roompass = False
+        self.gpg = gnupg.GPG()
     
     
     def pollForMessage(self):
@@ -152,6 +158,7 @@ class msgHandler(object):
         self.room = room
         self.user = user
         self.last = resp['last']
+        self.roompass = passw
         return True
 
 
@@ -180,6 +187,7 @@ class msgHandler(object):
         self.room = False
         self.user = False
         self.last = 0
+        self.roompass = False
         
         return True
                 
@@ -286,13 +294,23 @@ class msgHandler(object):
     def decrypt(self,msg):
         ''' Placeholder
         '''
-        return msg
+        
+        try:
+            # Check if it's json as it may be a system message
+            json.loads(msg)
+            return msg
+        
+        except:
+            return str(self.gpg.decrypt(msg.decode("base64"),passphrase=self.roompass))
+        
     
 
     def encrypt(self,msg):
         ''' Placeholder
         '''
-        return msg
+        
+        crypted = self.gpg.encrypt(msg,None,passphrase=self.roompass,symmetric="AES256",armor=False)
+        return crypted.data.encode('base64')
 
 
     def hashpw(self,passw):
@@ -349,13 +367,13 @@ just extend with do_something  method to handle your commands"""
                         
             
             if cmd == "join":
-                # /join [username] [room] [password]
+                # /join [room] [password] [username] 
                 
                 if len(args) < 3:
                     raise InvalidCommand(line)
                     return
                 
-                if not msg.joinRoom(args[0],args[1],args[2]):
+                if not msg.joinRoom(args[2],args[0],args[1]):
                     raise UnableTo('join',line)
                 return
             
@@ -431,7 +449,7 @@ just extend with do_something  method to handle your commands"""
             res='Type [%s] to quit program\n' % qc
             res += """Available commands: 
             
-            /join [username] [room] [password]                          Join a room
+            /join [room] [password] [username]                          Join a room
             /leave                                                      Leave current room
             /room create [roomname] [roompass] [admin user]             New room management 
             
