@@ -295,6 +295,11 @@ just extend with do_something  method to handle your commands"""
     def __init__(self,quit_commands=['q','quit','exit'], help_commands=['help','?', 'h']):
         self._quit_cmd=quit_commands
         self._help_cmd=help_commands
+        self._controlcommands = [
+            "join","leave","room"
+            
+            
+            ]
         
     def __call__(self,line):
         global msg
@@ -374,10 +379,17 @@ just extend with do_something  method to handle your commands"""
         def std_help():
             qc='|'.join(self._quit_cmd)
             hc ='|'.join(self._help_cmd)
-            res='Type [%s] command_name to get more help about particular command\n' % hc
-            res+='Type [%s] to quit program\n' % qc
-            cl=[name[3:] for name in dir(self) if name.startswith('do_') and len(name)>3]
-            res += 'Available commands: %s' %(' '.join(sorted(cl)))
+            res='Type [%s] to quit program\n' % qc
+            res += """Available commands: 
+            
+            /join [username] [room] [password]                          Join a room
+            /leave                                                      Leave current room
+            /room [create|invite] [roomname] [roompass] [[user]]        New room management 
+            
+            Once in a room, to send a message, just type it.
+            
+            
+            """
             return res
         if not cmd:
             return std_help()
@@ -467,7 +479,7 @@ You can also asynchronously output messages with Commander.output('message') """
               ('magenta', urwid.DARK_MAGENTA, urwid.BLACK), ]
     
     
-    def __init__(self, title, command_caption='Command:  (Tab to switch focus to upper frame, where you can scroll text)', cmd_cb=None, max_size=1000):
+    def __init__(self, title, command_caption='Message:  (Tab to switch focus to upper frame, where you can scroll text)', cmd_cb=None, max_size=1000):
         self.header=urwid.Text(title)
         self.model=urwid.SimpleListWalker([])
         self.body=ListView(self.model, lambda: self._update_focus(False), max_size=max_size )
