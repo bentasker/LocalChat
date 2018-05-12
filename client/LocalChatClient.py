@@ -158,11 +158,31 @@ class msgHandler(object):
 
 
     def leaveRoom(self):
-        ''' Placeholder '''
+        ''' Leave the current room
+        '''
         if not self.room:
             return False
         
+        payload = {"roomName": self.room, 
+                   "user": self.user
+                   }
         
+        request = {"action":"leaveRoom",
+                   "payload": json.dumps(payload)
+                   }        
+
+
+        resp = self.sendRequest(request)
+
+        if resp == "BROKENLINK" or resp['status'] != "ok":
+            return False
+        
+        self.room = False
+        self.user = False
+        self.last = 0
+        
+        return True
+                
 
 
     def sendRequest(self,data):
@@ -197,9 +217,9 @@ class NotInRoom(Exception):
         Exception.__init__(self,'Message not sent')
 
 
-class UnableToJoin(Exception):
-    def __init__(self,cmd):
-        Exception.__init__(self,'Could not Join: %s' % (cmd,))
+class UnableTo(Exception):
+    def __init__(self,action,cmd):
+        Exception.__init__(self,'Could not %s: %s' % (action,cmd))
 
 
 class InvalidCommand(Exception):
@@ -233,9 +253,17 @@ just extend with do_something  method to handle your commands"""
                     raise InvalidCommand(line)
                 
                 if not msg.joinRoom(args[0],args[1],args[2]):
-                    raise UnableToJoin(line)
+                    raise UnableTo('join',line)
                 return
             
+            if cmd == "leave":
+                # /leave
+                if not msg.leaveRoom():
+                    raise UnableTo('leave',line)
+                
+                global c
+                c.output('Left the room','magenta')
+                return
         
 
         if cmd in self._quit_cmd:

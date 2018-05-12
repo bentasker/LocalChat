@@ -120,6 +120,9 @@ class MsgHandler(object):
         elif reqjson['action'] == "joinRoom":
             return self.processjoinRoom(reqjson)
         
+        elif reqjson['action'] == "leaveRoom":
+            return self.processleaveRoom(reqjson)
+        
         elif reqjson['action'] == "inviteUser":
             return self.inviteUser(reqjson)
         
@@ -274,7 +277,36 @@ class MsgHandler(object):
             return {"status":"ok","last":last}
         
         
+    def processleaveRoom(self,reqjson):
+        ''' Process a user's request to leave a room
+        '''
+        if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload']:
+            return 400
         
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        
+        if not room:
+            return 400
+        
+        # Check the user is actually in the room and authorised
+        if not self.validateUser(reqjson['payload']):
+            return 400
+        
+        # Mark them as not in the room
+        self.cursor.execute("UPDATE users set active=0 where username=? and room=?", (reqjson['payload']['user'],room))
+        self.conn.commit()
+        
+        # Push a message to the room to note they left
+        m = {
+                "user":"SYSTEM",
+                "text":"User %s left the room" % (reqjson['payload']['user'])
+            }
+        
+        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
+        msgid = self.cursor.lastrowid
+        self.conn.commit()        
+        
+        return {"status":"ok"}
     
     
     def sendMsg(self,reqjson):
