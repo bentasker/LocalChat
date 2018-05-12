@@ -45,8 +45,6 @@ def index(path):
         
     return json.dumps(a)
 
-    
-
 
 class MsgHandler(object):
 
