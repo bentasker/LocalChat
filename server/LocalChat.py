@@ -20,6 +20,8 @@ import time
 import os
 import json
 import bcrypt
+import random
+import string
 
 app = Flask(__name__)
 
@@ -84,6 +86,13 @@ class MsgHandler(object):
             active INTEGER DEFAULT 0,
             passhash TEXT NOT NULL,
             PRIMARY KEY (username,room)
+        );
+        
+        
+        CREATE TABLE sessions (
+            username TEXT NOT NULL,
+            sesskey TEXT NOT NULL,
+            PRIMARY KEY(sesskey)
         );
         
         """
@@ -423,10 +432,14 @@ class MsgHandler(object):
                 
         # Mark the user as active in the users table
         self.cursor.execute("UPDATE users set active=1 where username=? and room=?", (reqjson['payload']['user'],room))
+        
+        
+        # Create a session for the user
+        sesskey = "%s-%s" % (room,self.genSessionKey())
+        self.cursor.execute("INSERT INTO sessions (username,sesskey) values (?,?)", (reqjson['payload']['user'],sesskey))
         self.conn.commit()
-        
-        
-        return {"status":"ok","last":last}
+                
+        return {"status":"ok","last":last,"session":sesskey}
         
         
     def processleaveRoom(self,reqjson):
@@ -591,6 +604,9 @@ class MsgHandler(object):
             self.cursor.execute("DELETE FROM messages where ts < ?",(thresholdtime,))
             self.conn.commit()
 
+
+    def genSessionKey(self,N=128):
+        return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits).encode('utf-8') for _ in range(N))
 
 
     def test(self):

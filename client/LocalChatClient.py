@@ -39,6 +39,7 @@ class msgHandler(object):
         self.server = SERVER
         self.room = False
         self.roompass = False
+        self.sesskey = False
         self.gpg = gnupg.GPG()
     
     
@@ -168,6 +169,7 @@ class msgHandler(object):
         self.user = user
         self.last = resp['last']
         self.roompass = p[0] # The room password is the first section of the password
+        self.sesskey = resp['session']
         return True
 
 
