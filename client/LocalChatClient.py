@@ -52,7 +52,8 @@ class msgHandler(object):
         
         payload = {"roomName": self.room, 
                    "mylast":self.last,
-                   "user": self.user
+                   "user": self.user,
+                   "sesskey": self.sesskey
                    }
         
         request = {"action":"pollMsg",
@@ -125,7 +126,8 @@ class msgHandler(object):
         
         payload = {"roomName": self.room, 
                    "msg":self.encrypt(json.dumps(msg)),
-                   "user": self.user
+                   "user": self.user,
+                   "sesskey": self.sesskey
                    }
         
         request = {"action":"sendMsg",
@@ -182,7 +184,8 @@ class msgHandler(object):
             return False
         
         payload = {"roomName": self.room, 
-                   "user": self.user
+                   "user": self.user,
+                   "sesskey": self.sesskey
                    }
         
         request = {"action":"leaveRoom",
@@ -199,6 +202,7 @@ class msgHandler(object):
         self.user = False
         self.last = 0
         self.roompass = False
+        self.sesskey = False
         
         return True
                 
@@ -241,6 +245,7 @@ class msgHandler(object):
 
         payload = {"roomName": self.room, 
                    "user": self.user,
+                   "sesskey": self.sesskey
                    }
         
         request = {"action":"closeRoom",
@@ -268,7 +273,8 @@ class msgHandler(object):
         payload = {"roomName": self.room, 
                    "user": self.user,
                    "invite": user,
-                   "pass": passw
+                   "pass": passw,
+                   "sesskey": self.sesskey
                    }
         
         request = {"action":"inviteUser",
@@ -295,7 +301,8 @@ class msgHandler(object):
         
         payload = {"roomName": self.room, 
                    "user": self.user,
-                   "kick": user
+                   "kick": user,
+                   "sesskey": self.sesskey
                    }
         
         request = {"action":action,
