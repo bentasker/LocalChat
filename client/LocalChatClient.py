@@ -149,7 +149,7 @@ class msgHandler(object):
         userpass = p[1]
         
         payload = {"roomName": room, 
-                   "userpass": userpass,
+                   "userpass": userpass.encode('utf-8'),
                    "user": user
                    }
         

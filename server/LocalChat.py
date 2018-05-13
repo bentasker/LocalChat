@@ -361,8 +361,13 @@ class MsgHandler(object):
         
         Not yet defined the authentication mechanism to use, so that's a TODO
         '''
-        if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload']:
-            return 400
+
+        # Check the required information is present
+        required = ['roomName','user','userpass']
+        for i in required:
+            if i not in reqjson['payload']:
+                return 400
+                
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         
@@ -374,49 +379,54 @@ class MsgHandler(object):
             return 403
         
         # Check whether that user is authorised to connect to that room
-        self.cursor.execute("SELECT username, room from users where username=? and room=?",(reqjson['payload']['user'],room))
+        self.cursor.execute("SELECT username, room,passhash from users where username=? and room=?",(reqjson['payload']['user'],room))
         r = self.cursor.fetchone()
         
         if not r:
             return { "status": "NOK" }
+        
+        
+        # Now we need to verify they've supplied a correct password for that user
+        stored = r[2].encode("utf-8")
+        if stored != bcrypt.hashpw(reqjson['payload']['userpass'].encode('utf-8'),stored):
+            return 403
+        
+            
+        # Tidy older messages away.
+        #
+        # We do this so that a user who joins can't then send a poll with last:0 to retrieve the full history
+        #
+        # Basically, anything older than 10 seconds should go. Users who were already present will be able
+        # to scroll up and down in their client anyway
+        self.tidyMsgs(time.time()-10,room)
+        
+        
+        # Push a message to the room to note that the user joined
+        
+        m = {
+                "user":"SYSTEM",
+                "text":"User %s joined the room" % (reqjson['payload']['user'])
+            }
+        
+        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
+        msgid = self.cursor.lastrowid
+        self.conn.commit()
+        
+        # Check the latest message ID for that room
+        self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
+        r = self.cursor.fetchone()
+        
+        if not r:
+            last = 0
         else:
-            
-            
-            # Tidy older messages away.
-            #
-            # We do this so that a user who joins can't then send a poll with last:0 to retrieve the full history
-            #
-            # Basically, anything older than 10 seconds should go. Users who were already present will be able
-            # to scroll up and down in their client anyway
-            self.tidyMsgs(time.time()-10,room)
-            
-            
-            # Push a message to the room to note that the user joined
-            
-            m = {
-                    "user":"SYSTEM",
-                    "text":"User %s joined the room" % (reqjson['payload']['user'])
-                }
-            
-            self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
-            msgid = self.cursor.lastrowid
-            self.conn.commit()
-            
-            # Check the latest message ID for that room
-            self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
-            r = self.cursor.fetchone()
-            
-            if not r:
-                last = 0
-            else:
-                last = r[0]
-                   
-            # Mark the user as active in the users table
-            self.cursor.execute("UPDATE users set active=1 where username=? and room=?", (reqjson['payload']['user'],room))
-            self.conn.commit()
-            
-            
-            return {"status":"ok","last":last}
+            last = r[0]
+                
+        # Mark the user as active in the users table
+        self.cursor.execute("UPDATE users set active=1 where username=? and room=?", (reqjson['payload']['user'],room))
+        self.conn.commit()
+        
+        
+        return {"status":"ok","last":last}
         
         
     def processleaveRoom(self,reqjson):
