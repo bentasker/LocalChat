@@ -258,6 +258,8 @@ class MsgHandler(object):
         self.cursor.execute("DELETE FROM users where room=?",(room,))
         self.cursor.execute("DELETE FROM rooms where id=?",(room,))
         self.cursor.execute("DELETE FROM messages where room=?",(room,))
+        self.cursor.execute("DELETE FROM sessions where sesskey like ?", (reqjson['payload']["roomName"] + '-%',))
+        
         self.conn.commit()
         
         return { "status" : "ok" }
