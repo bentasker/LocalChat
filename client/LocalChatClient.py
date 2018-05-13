@@ -144,12 +144,12 @@ class msgHandler(object):
         ''' Join a room
         '''
         
-        # TODO - this functionality isn't on the 
-        # backend yet, so haven't defined the hashing mechanism etc
-        passhash = self.hashpw(passw)
+        # We only want to send the user password section of the password
+        p = passw.split(":")
+        userpass = p[1]
         
         payload = {"roomName": room, 
-                   "passhash": passhash,
+                   "userpass": userpass,
                    "user": user
                    }
         
@@ -167,7 +167,7 @@ class msgHandler(object):
         self.room = room
         self.user = user
         self.last = resp['last']
-        self.roompass = passw
+        self.roompass = p[0] # The room password is the first section of the password
         return True
 
 
@@ -211,9 +211,14 @@ class msgHandler(object):
         
         if not user:
             user = self.user
+
+
+        # Generate a password for the admin
+        passw = self.genpassw()
                 
         payload = {"roomName": room, 
-                   "owner": user
+                   "owner": user,
+                   "pass": passw
                    }
         
         request = {"action":"createRoom",
@@ -225,7 +230,7 @@ class msgHandler(object):
         if resp == "BROKENLINK" or resp['status'] != "ok":
             return False
         
-        return resp['name']
+        return [resp['name'],passw]
     
 
     def closeRoom(self):
@@ -353,7 +358,7 @@ class msgHandler(object):
         ''' Generate a random string of chars to act as a password
         '''
         
-        return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(N))
+        return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits).encode('utf-8') for _ in range(N))
 
 
 
@@ -460,11 +465,15 @@ just extend with do_something  method to handle your commands"""
                         raise UnableTo('create room',line)
                         return
                     
+                    # Seperate out the return value
+                    rm = n[0]
+                    up = n[1] # user specific password
                     global c
+                    
+                    # Generate a room password
                     p = msg.genpassw()
-                    c.output('Created Room %s' %(n))
-                    c.output('Use "%s" as the Room password' %(p))
-                    c.output('To join the room, do /join %s %s %s' %(args[1],p,args[2]))
+                    c.output('Created Room %s' %(rm))
+                    c.output('To join the room, do /join %s %s:%s %s' %(args[1],p,up,args[2]))
                     return
                 
                 elif args[0] == "invite":

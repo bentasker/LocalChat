@@ -7,6 +7,7 @@
 # apt-get install:
 #   python-flask
 #   python-openssl
+#   python-bcrypt
 #
 
 from flask import Flask
@@ -18,6 +19,7 @@ import sqlite3
 import time
 import os
 import json
+import bcrypt
 
 app = Flask(__name__)
 
@@ -80,6 +82,7 @@ class MsgHandler(object):
             username TEXT NOT NULL,
             room INTEGER NOT NULL,
             active INTEGER DEFAULT 0,
+            passhash TEXT NOT NULL,
             PRIMARY KEY (username,room)
         );
         
@@ -172,6 +175,15 @@ class MsgHandler(object):
         }'
         
         '''
+        
+        # Validate the request
+        #
+        # All validation snippets will change to this format soon
+        required = ['roomName','owner','pass']
+        for i in required:
+            if i not in reqjson['payload']:
+                return 400
+        
         print "Creating room %s" % (reqjson['payload'])
         
         # Create a tuple for sqlite3
@@ -187,7 +199,10 @@ class MsgHandler(object):
             return 500
         
         
-        self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['owner'],roomid))
+        # Generate a password hash for the owners password
+        passhash = bcrypt.hashpw(reqjson['payload']['pass'].encode('utf-8'),bcrypt.gensalt())
+        
+        self.cursor.execute("INSERT INTO users (username,room,passhash) values (?,?,?)",(reqjson['payload']['owner'],roomid,passhash))
         self.conn.commit()
         
         return {
@@ -245,13 +260,9 @@ class MsgHandler(object):
 
     def inviteUser(self,reqjson):
         ''' Link a username into a room
-
-
-        curl -v -X POST http://127.0.0.1:8090/ -H "Content-Type: application/json" --data '{"action":"inviteUser","payload":"{\"roomName\":\"BenTest\",\"user\":\"ben2\"}"}'
-
         '''
         
-        if "roomName" not in reqjson['payload']:
+        if "roomName" not in reqjson['payload'] or "pass" not in reqjson['payload'] or "invite" not in reqjson['payload']:
             return 400
         
         room = self.getRoomID(reqjson['payload']["roomName"])
@@ -274,9 +285,11 @@ class MsgHandler(object):
             return 403
        
         
+        # Generate a hash of the submitted password
+        passhash = bcrypt.hashpw(reqjson['payload']['pass'].encode('utf-8'),bcrypt.gensalt())
         
         # Otherwise, link the user in
-        self.cursor.execute("INSERT INTO users (username,room) values (?,?)",(reqjson['payload']['invite'],room))
+        self.cursor.execute("INSERT INTO users (username,room) values (?,?,?)",(reqjson['payload']['invite'],room,passhash))
         
         # Push a notification into the group
         m = {
