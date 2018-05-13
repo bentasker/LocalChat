@@ -64,8 +64,7 @@ class MsgHandler(object):
         sql = """ CREATE TABLE rooms (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
-            owner TEXT NOT NULL,
-            pass TEXT NOT NULL
+            owner TEXT NOT NULL
         );
         
         
@@ -177,11 +176,11 @@ class MsgHandler(object):
         
         # Create a tuple for sqlite3
         t = (reqjson['payload']['roomName'],
-             reqjson['payload']['owner'],
-             reqjson['payload']['passhash'])
+             reqjson['payload']['owner']
+             )
         
         try:
-            self.cursor.execute("INSERT INTO rooms (name,owner,pass) VALUES (?,?,?)",t)
+            self.cursor.execute("INSERT INTO rooms (name,owner) VALUES (?,?)",t)
             roomid = self.cursor.lastrowid
         except:
             # Probably a duplicate name, but we don't want to give the other end a reason anyway
