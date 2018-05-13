@@ -259,9 +259,14 @@ class msgHandler(object):
         #TODO - Authentication
         '''
         
+        
+        # Generate a password for the new user
+        passw = self.genpassw()
+        
         payload = {"roomName": self.room, 
                    "user": self.user,
-                   "invite": user
+                   "invite": user,
+                   "pass": passw
                    }
         
         request = {"action":"inviteUser",
@@ -273,7 +278,7 @@ class msgHandler(object):
         if resp == "BROKENLINK" or resp['status'] != "ok":
             return False
         
-        return True
+        return [self.room,self.roompass,passw,user]
 
 
 
@@ -487,6 +492,7 @@ just extend with do_something  method to handle your commands"""
                     
                     global c
                     c.output('User %s may now join room' %(args[1],))
+                    c.output('To join the room, they should do /join %s %s:%s %s' %(n[0],n[1],n[2],n[3]))
                     return                                        
                     
 

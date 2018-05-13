@@ -289,7 +289,7 @@ class MsgHandler(object):
         passhash = bcrypt.hashpw(reqjson['payload']['pass'].encode('utf-8'),bcrypt.gensalt())
         
         # Otherwise, link the user in
-        self.cursor.execute("INSERT INTO users (username,room) values (?,?,?)",(reqjson['payload']['invite'],room,passhash))
+        self.cursor.execute("INSERT INTO users (username,room,passhash) values (?,?,?)",(reqjson['payload']['invite'],room,passhash))
         
         # Push a notification into the group
         m = {
