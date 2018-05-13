@@ -340,6 +340,12 @@ class MsgHandler(object):
         
         
         self.cursor.execute("UPDATE users set active=0 where room=? and username=?",(room,reqjson["payload"]["kick"]))
+        
+        # Delete their session
+        self.cursor.execute("DELETE FROM sessions where username=? and sesskey like ?", (reqjson['payload']['kick'],reqjson['payload']["roomName"] + '-%'))
+        
+        
+        
         m = {
                 "user":"SYSTEM",
                 "text":"User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick'])
@@ -460,6 +466,9 @@ class MsgHandler(object):
         # Mark them as not in the room
         self.cursor.execute("UPDATE users set active=0 where username=? and room=?", (reqjson['payload']['user'],room))
         self.conn.commit()
+        
+        # Delete their session
+        self.cursor.execute("DELETE FROM sessions where username=? and sesskey = ?", (reqjson['payload']['user'],reqjson['payload']["sesskey"]))
         
         # Push a message to the room to note they left
         m = {
