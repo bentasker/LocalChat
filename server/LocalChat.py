@@ -435,7 +435,7 @@ class MsgHandler(object):
         
         
         # Create a session for the user
-        sesskey = "%s-%s" % (room,self.genSessionKey())
+        sesskey = "%s-%s" % (reqjson['payload']["roomName"],self.genSessionKey())
         self.cursor.execute("INSERT INTO sessions (username,sesskey) values (?,?)", (reqjson['payload']['user'],sesskey))
         self.conn.commit()
                 
