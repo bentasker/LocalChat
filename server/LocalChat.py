@@ -41,7 +41,7 @@ def index(path):
     a = msghandler.processSubmission(reqjson)
     
     # Check the status
-    if a in [400,403]:
+    if a in [400,403,500]:
         response = make_response("",a)
         return response
         
