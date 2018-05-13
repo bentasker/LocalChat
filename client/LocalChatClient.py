@@ -71,7 +71,13 @@ class msgHandler(object):
         # Otherwise, process the messages
         for i in resp["messages"]:
             self.last = i[0]
-            msgbody = json.loads(self.decrypt(i[1]))
+            
+            try:
+                msgbody = json.loads(self.decrypt(i[1]))
+            except:
+                # Means an invalid message was received - LOC-8
+                to_print.append(['error','Received message which could not be decrypted'])
+                continue
             
             # TODO - We'll need to json decode and extract the sending user's name
             # but not currently including that info in my curl tests. Also means test that part of the next block
