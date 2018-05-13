@@ -76,6 +76,7 @@ class MsgHandler(object):
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts INTEGER NOT NULL,
             room INTEGER NOT NULL,
+            user NOT NULL,
             msg TEXT NOT NULL
         );
         
@@ -248,13 +249,9 @@ class MsgHandler(object):
         if not n:
             return 403
         
-        m = {
-            "user":"SYSTEM",
-            "text":"Room has been closed. Buh-Bye"
-        }
-        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m))) 
-        self.conn.commit()
-        
+
+        self.pushSystemMsg("Room has been closed. Buh-Bye",room)
+                
         self.cursor.execute("DELETE FROM users where room=?",(room,))
         self.cursor.execute("DELETE FROM rooms where id=?",(room,))
         self.cursor.execute("DELETE FROM messages where room=?",(room,))
@@ -287,12 +284,7 @@ class MsgHandler(object):
         
         if reqjson['payload']['invite'] == "SYSTEM":
             # Push a notification into the group
-            m = {
-                    "user":"SYSTEM",
-                    "text":"ALERT: User %s tried to invite SYSTEM" % (reqjson['payload']['user'])
-                }
-            self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m))) 
-            self.conn.commit()
+            self.pushSystemMsg("ALERT: User %s tried to invite SYSTEM" % (reqjson['payload']['user']),room)
             return 403
        
         
@@ -303,13 +295,7 @@ class MsgHandler(object):
         self.cursor.execute("INSERT INTO users (username,room,passhash) values (?,?,?)",(reqjson['payload']['invite'],room,passhash))
         
         # Push a notification into the group
-        m = {
-                "user":"SYSTEM",
-                "text":"User %s invited %s to the room" % (reqjson['payload']['user'],reqjson['payload']['invite'])
-            }
-        
-        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))        
-        self.conn.commit()        
+        self.pushSystemMsg("User %s invited %s to the room" % (reqjson['payload']['user'],reqjson['payload']['invite']),room)
         
         return {
                 "status":'ok'
@@ -346,28 +332,13 @@ class MsgHandler(object):
         # Delete their session
         self.cursor.execute("DELETE FROM sessions where username=? and sesskey like ?", (reqjson['payload']['kick'],reqjson['payload']["roomName"] + '-%'))
         
+        self.pushSystemMsg("User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room)
         
-        
-        m = {
-                "user":"SYSTEM",
-                "text":"User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick'])
-            }
-        
-        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
-        msgid = self.cursor.lastrowid
-        self.conn.commit()
-                    
         if ban:
             # If we're banning them, also need to disinvite them
             self.cursor.execute("DELETE from users where room=? and username=?",(room,reqjson["payload"]["kick"]))
-            m = {
-                    "user":"SYSTEM",
-                    "text":"User %s banned %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick'])
-                }
+            self.pushSystemMsg("User %s banned %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room)
             
-            self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
-            self.conn.commit()
-        
         return { "status" : "ok" }
     
     
@@ -419,16 +390,8 @@ class MsgHandler(object):
         
         
         # Push a message to the room to note that the user joined
-        
-        m = {
-                "user":"SYSTEM",
-                "text":"User %s joined the room" % (reqjson['payload']['user'])
-            }
-        
-        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
-        msgid = self.cursor.lastrowid
-        self.conn.commit()
-        
+        msgid = self.pushSystemMsg("User %s joined the room" % (reqjson['payload']['user']),room)
+
         # Check the latest message ID for that room
         self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
         r = self.cursor.fetchone()
@@ -473,15 +436,7 @@ class MsgHandler(object):
         self.cursor.execute("DELETE FROM sessions where username=? and sesskey = ?", (reqjson['payload']['user'],reqjson['payload']["sesskey"]))
         
         # Push a message to the room to note they left
-        m = {
-                "user":"SYSTEM",
-                "text":"User %s left the room" % (reqjson['payload']['user'])
-            }
-        
-        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,json.dumps(m)))
-        msgid = self.cursor.lastrowid
-        self.conn.commit()        
-        
+        self.pushSystemMsg("User %s left the room" % (reqjson['payload']['user']),room)
         return {"status":"ok"}
     
     
@@ -505,7 +460,7 @@ class MsgHandler(object):
             return 400
 
             
-        self.cursor.execute("INSERT INTO messages (ts,room,msg) VALUES (?,?,?)",(time.time(),room,reqjson['payload']['msg']))
+        self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,?)",(time.time(),room,reqjson['payload']['msg'],reqjson['payload']['user']))
         msgid = self.cursor.lastrowid
         self.conn.commit()
         
@@ -543,7 +498,7 @@ class MsgHandler(object):
         if not room:
             return 400        
         
-        self.cursor.execute("""SELECT id,msg,ts FROM messages
+        self.cursor.execute("""SELECT id,msg,ts,user FROM messages
             WHERE room=? AND
             id > ?
             ORDER BY ts ASC           
@@ -622,6 +577,19 @@ class MsgHandler(object):
         else:
             self.cursor.execute("DELETE FROM messages where ts < ?",(thresholdtime,))
             self.conn.commit()
+
+
+
+    def pushSystemMsg(self,msg,room):
+        ''' Push a message from the SYSTEM user into the queue
+        '''
+        m = {
+            "text":msg
+        }
+        self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,'SYSTEM')",(time.time(),room,json.dumps(m)))
+        msgid = self.cursor.lastrowid
+        self.conn.commit()
+        return msgid
 
 
     def genSessionKey(self,N=128):

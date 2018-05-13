@@ -85,7 +85,7 @@ class msgHandler(object):
             # but not currently including that info in my curl tests. Also means test that part of the next block
             
             color = "green"
-            upstruser = msgbody['user'] # Temporary placeholder
+            upstruser = i[3]
             
             if upstruser == self.user:
                 # One of our own, change the color
