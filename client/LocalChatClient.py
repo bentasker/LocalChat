@@ -16,6 +16,8 @@ import threading
 import json
 import urllib2
 import ssl
+import string
+import random
 
 import datetime as dt
 
@@ -194,7 +196,7 @@ class msgHandler(object):
                 
 
 
-    def createRoom(self,room,passw,user=False):
+    def createRoom(self,room,user=False):
         ''' Create a new room
         '''
         
@@ -203,14 +205,9 @@ class msgHandler(object):
         
         if not user:
             user = self.user
-        
-        # Room passwords may well go way at some point, but honour the
-        # api structure for now
-        passhash = self.hashpw(passw)
-        
+                
         payload = {"roomName": room, 
-                   "owner": user,
-                   "passhash": passhash
+                   "owner": user
                    }
         
         request = {"action":"createRoom",
@@ -346,6 +343,13 @@ class msgHandler(object):
         return passw
 
 
+    def genpassw(self,N=16):
+        ''' Generate a random string of chars to act as a password
+        '''
+        
+        return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(N))
+
+
 
 class NotInRoom(Exception):
     def __init__(self,cmd):
@@ -439,19 +443,22 @@ just extend with do_something  method to handle your commands"""
                     return
                 
                 
-                # /room create [roomname] [roompass] [[user]]
+                # /room create [roomname] [[user]]
                 if args[0] == "create":
                     
-                    if len(args) < 4:
-                        args[3] = False
+                    if len(args) < 3:
+                        args[2] = False
                     
-                    n = msg.createRoom(args[1],args[2],args[3])
+                    n = msg.createRoom(args[1],args[2])
                     if not n:
                         raise UnableTo('create room',line)
                         return
                     
                     global c
+                    p = msg.genpassw()
                     c.output('Created Room %s' %(n))
+                    c.output('Use "%s" as the Room password' %(p))
+                    c.output('To join the room, do /join %s %s %s' %(args[1],p,args[2]))
                     return
                 
                 elif args[0] == "invite":
