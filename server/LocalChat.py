@@ -561,9 +561,17 @@ class MsgHandler(object):
             return False
         
         
+        # Validate the session information
+        self.cursor.execute("SELECT username from sessions where username=? and sesskey=?",(payload['user'],payload['sesskey']))
+        r = self.cursor.fetchone();
+        
+        if not r:
+            return False
+        
+        
         room = self.getRoomID(payload["roomName"])
         if not room:
-            return 400        
+            return False        
         
         
         
