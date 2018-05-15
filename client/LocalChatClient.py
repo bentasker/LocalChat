@@ -93,6 +93,10 @@ class msgHandler(object):
             
             elif upstruser == "SYSTEM":
                 color = "magenta"
+                if msgbody['verb'] == "sysalert":
+                    color = 'reversed'
+                elif msgbody['verb'] == 'syswarn':
+                    color = 'cyan'
                 
             
             ts = dt.datetime.utcfromtimestamp(i[2]).strftime("[%H:%M:%S]")
@@ -647,6 +651,7 @@ You can also asynchronously output messages with Commander.output('message') """
               ('blue', urwid.LIGHT_BLUE, urwid.BLACK),
               ('magenta', urwid.DARK_MAGENTA, urwid.BLACK), 
               ('yellow', urwid.YELLOW, urwid.BLACK), 
+              ('cyan', urwid.LIGHT_CYAN, urwid.BLACK), 
               ]
     
     

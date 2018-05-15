@@ -250,7 +250,7 @@ class MsgHandler(object):
             return 403
         
 
-        self.pushSystemMsg("Room has been closed. Buh-Bye",room)
+        self.pushSystemMsg("Room has been closed. Buh-Bye",room,'syswarn')
                 
         self.cursor.execute("DELETE FROM users where room=?",(room,))
         self.cursor.execute("DELETE FROM rooms where id=?",(room,))
@@ -284,7 +284,7 @@ class MsgHandler(object):
         
         if reqjson['payload']['invite'] == "SYSTEM":
             # Push a notification into the group
-            self.pushSystemMsg("ALERT: User %s tried to invite SYSTEM" % (reqjson['payload']['user']),room)
+            self.pushSystemMsg("ALERT: User %s tried to invite SYSTEM" % (reqjson['payload']['user']),room,'sysalert')
             return 403
        
         
@@ -332,12 +332,12 @@ class MsgHandler(object):
         # Delete their session
         self.cursor.execute("DELETE FROM sessions where username=? and sesskey like ?", (reqjson['payload']['kick'],reqjson['payload']["roomName"] + '-%'))
         
-        self.pushSystemMsg("User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room)
+        self.pushSystemMsg("User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room,'syswarn')
         
         if ban:
             # If we're banning them, also need to disinvite them
             self.cursor.execute("DELETE from users where room=? and username=?",(room,reqjson["payload"]["kick"]))
-            self.pushSystemMsg("User %s banned %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room)
+            self.pushSystemMsg("User %s banned %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room,'syswarn')
             
         return { "status" : "ok" }
     
