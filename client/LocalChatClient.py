@@ -108,7 +108,7 @@ class msgHandler(object):
         return to_print
         
         
-    def sendMsg(self,line):
+    def sendMsg(self,line,verb='say'):
         ''' Send a message 
         '''
         
@@ -121,7 +121,8 @@ class msgHandler(object):
         
         msg = {
             'user': self.user,
-            'text': line
+            'text': line,
+            "verb": verb
             }
         
         payload = {"roomName": self.room, 

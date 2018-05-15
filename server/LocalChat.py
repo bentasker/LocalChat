@@ -580,11 +580,12 @@ class MsgHandler(object):
 
 
 
-    def pushSystemMsg(self,msg,room):
+    def pushSystemMsg(self,msg,room,verb="sysinfo"):
         ''' Push a message from the SYSTEM user into the queue
         '''
         m = {
-            "text":msg
+            "text":msg,
+            "verb":verb
         }
         self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,'SYSTEM')",(time.time(),room,json.dumps(m)))
         msgid = self.cursor.lastrowid
