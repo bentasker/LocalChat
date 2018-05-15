@@ -97,11 +97,18 @@ class msgHandler(object):
             
             ts = dt.datetime.utcfromtimestamp(i[2]).strftime("[%H:%M:%S]")
             
-            line = [
-                ts, # timestamp
-                "%s>" % (upstruser,), # To be replaced later
-                msgbody['text']
-                ]
+            if msgbody["verb"] == "do":
+                color = 'yellow'
+                line = [
+                    "        ** %s %s **" % (upstruser,msgbody['text'])
+                    ]
+            else:
+                
+                line = [
+                    ts, # timestamp
+                    "%s>" % (upstruser,), # To be replaced later
+                    msgbody['text']
+                    ]
             
             to_print.append([color,' '.join(line)])
         
@@ -412,6 +419,14 @@ just extend with do_something  method to handle your commands"""
             cmd = cmd[1:]
             
             
+            if cmd == "me":
+                #/me [string]
+                r = msg.sendMsg(' '.join(args),'do')
+                if not r:
+                    raise NotInRoom(line)
+                return
+
+            
             if cmd == "ban":
                 # /kick [user]
                 
@@ -532,7 +547,7 @@ just extend with do_something  method to handle your commands"""
             
             
             /room invite [user]                                         Invite a user into the current room
-            
+            /me [string]                                                Send an 'action' instead of a message
             
             Room Admin commands:
             
@@ -630,7 +645,9 @@ You can also asynchronously output messages with Commander.output('message') """
               ('error', urwid.LIGHT_RED, urwid.BLACK),
               ('green', urwid.DARK_GREEN, urwid.BLACK),
               ('blue', urwid.LIGHT_BLUE, urwid.BLACK),
-              ('magenta', urwid.DARK_MAGENTA, urwid.BLACK), ]
+              ('magenta', urwid.DARK_MAGENTA, urwid.BLACK), 
+              ('yellow', urwid.YELLOW, urwid.BLACK), 
+              ]
     
     
     def __init__(self, title, command_caption='Message:  (Tab to switch focus to upper frame, where you can scroll text)', cmd_cb=None, max_size=1000):
