@@ -96,6 +96,15 @@ class MsgHandler(object):
             PRIMARY KEY(sesskey)
         );
         
+        
+        CREATE TABLE failuremsgs (
+            username TEXT NOT NULL,
+            room INTEGER NOT NULL,
+            expires INTEGER NOT NULL,
+            msg TEXT NOT NULL,
+            PRIMARY KEY (username,room)
+        );
+        
         """
         
         self.conn.executescript(sql)
@@ -333,6 +342,10 @@ class MsgHandler(object):
         self.cursor.execute("DELETE FROM sessions where username=? and sesskey like ?", (reqjson['payload']['kick'],reqjson['payload']["roomName"] + '-%'))
         
         self.pushSystemMsg("User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room,'syswarn')
+        
+        # Push a LOC-14 failure message
+        self.cursor.execute("INSERT INTO failuremsgs (username,room,expires,msg) values (?,?,?,?)",(reqjson['payload']['kick'],room,time.time() + 300,'You have been kicked from the room'))
+        
         
         if ban:
             # If we're banning them, also need to disinvite them
@@ -594,7 +607,7 @@ class MsgHandler(object):
         return msgid
 
 
-    def returnFailure(self,status,payload=False,room=False):
+    def returnFailure(self,status,reqjson=False,room=False):
         ''' For whatever reason, a request isn't being actioned. We need to return a status code
         
         However, in some instances, we may allow a HTTP 200 just once in order to send the user
@@ -602,6 +615,21 @@ class MsgHandler(object):
         '''
         
         # TODO - implement the failure handling stuff
+        
+        if reqjson and room:
+            # Check whether there's a failure message or not 
+            self.cursor.execute("SELECT msg from failuremsgs where username=? and room=?",(reqjson['user'],room))
+            r = self.cursor.fetchone()
+            
+            if not r:
+                # No message to return
+                return status
+            
+            # Otherwise, return the message and remove it
+            self.cursor.execute("DELETE from failuremsgs where username=? and room=?",(reqjson['user'],room))
+            self.conn.commit()
+            return {"status":"errmessage","text":r[0]}
+        
         
         return status
         

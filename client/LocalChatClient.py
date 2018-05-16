@@ -69,6 +69,14 @@ class msgHandler(object):
         if resp['status'] == "unchanged":
             return False
         
+        
+        if resp['status'] == "errmessage":
+            # Got an error, we need to stop the poll and then return the text
+            self.room = False
+            self.roompass = False
+            self.sesskey = False
+            return [['reversed',resp['text']]]
+        
         to_print = []
         # Otherwise, process the messages
         for i in resp["messages"]:
