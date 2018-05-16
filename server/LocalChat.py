@@ -343,8 +343,7 @@ class MsgHandler(object):
         
         self.pushSystemMsg("User %s kicked %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room,'syswarn')
         
-        # Push a LOC-14 failure message
-        self.cursor.execute("INSERT INTO failuremsgs (username,room,expires,msg) values (?,?,?,?)",(reqjson['payload']['kick'],room,time.time() + 300,'You have been kicked from the room'))
+        self.pushFailureMessage(reqjson['payload']['kick'],room,'You have been kicked from the room')
         
         
         if ban:
@@ -354,8 +353,7 @@ class MsgHandler(object):
             
         return { "status" : "ok" }
     
-    
-    
+
     
     def processjoinRoom(self,reqjson):
         ''' Process a request from a user to login to a room
@@ -605,6 +603,19 @@ class MsgHandler(object):
         msgid = self.cursor.lastrowid
         self.conn.commit()
         return msgid
+
+
+    def pushFailureMessage(self,user,room,msg):
+        ''' Record a failure message against a user
+        
+        See LOC-14
+        
+        '''
+        self.cursor.execute("INSERT INTO failuremsgs (username,room,expires,msg) values (?,?,?,?)",(user,room,time.time() + 300,msg))
+        self.conn.commit()
+        
+        
+        
 
 
     def returnFailure(self,status,reqjson=False,room=False):
