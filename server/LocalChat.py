@@ -114,7 +114,7 @@ class MsgHandler(object):
         
         print reqjson
         if "action" not in reqjson or "payload" not in reqjson:
-            return 400
+            return self.returnFailure(400)
         
         
         # Decrypt the payload
@@ -123,7 +123,7 @@ class MsgHandler(object):
         try:
             reqjson['payload'] = json.loads(reqjson['payload'])
         except:
-            return 400
+            return self.returnFailure(400)
         
         if reqjson['action'] == "createRoom":
             return self.createRoom(reqjson)
@@ -192,7 +192,7 @@ class MsgHandler(object):
         required = ['roomName','owner','pass']
         for i in required:
             if i not in reqjson['payload']:
-                return 400
+                return self.returnFailure(400)
         
         print "Creating room %s" % (reqjson['payload'])
         
@@ -206,7 +206,7 @@ class MsgHandler(object):
             roomid = self.cursor.lastrowid
         except:
             # Probably a duplicate name, but we don't want to give the other end a reason anyway
-            return 500
+            return self.returnFailure(500)
         
         
         # Generate a password hash for the owners password
@@ -234,12 +234,12 @@ class MsgHandler(object):
         '''
         
         if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload']:
-            return 400
+            return self.returnFailure(400)
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         
         if not room:
-            return 400
+            return self.returnFailure(400)
         
         
         # Check the requesting user is the admin
@@ -247,7 +247,7 @@ class MsgHandler(object):
         n = self.cursor.fetchone()
         
         if not n:
-            return 403
+            return self.returnFailure(403)
         
 
         self.pushSystemMsg("Room has been closed. Buh-Bye",room,'syswarn')
@@ -271,21 +271,21 @@ class MsgHandler(object):
         '''
         
         if "roomName" not in reqjson['payload'] or "pass" not in reqjson['payload'] or "invite" not in reqjson['payload']:
-            return 400
+            return self.returnFailure(400)
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         
         if not room:
-            return 400
+            return self.returnFailure(400)
         
         if not self.validateUser(reqjson['payload']):
-            return 403
+            return self.returnFailure(403,reqjson['payload'],room)
         
         
         if reqjson['payload']['invite'] == "SYSTEM":
             # Push a notification into the group
             self.pushSystemMsg("ALERT: User %s tried to invite SYSTEM" % (reqjson['payload']['user']),room,'sysalert')
-            return 403
+            return self.returnFailure(403)
        
         
         # Generate a hash of the submitted password
@@ -310,12 +310,12 @@ class MsgHandler(object):
         '''
         
         if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload'] or "kick" not in reqjson['payload']:
-            return 400
+            return self.returnFailure(400)
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         
         if not room:
-            return 400
+            return self.returnFailure(400)
         
         
         # Check the requesting user is the admin
@@ -323,7 +323,7 @@ class MsgHandler(object):
         n = self.cursor.fetchone()
         
         if not n:
-            return 403
+            return self.returnFailure(403)
         
         
         
@@ -354,17 +354,17 @@ class MsgHandler(object):
         required = ['roomName','user','userpass']
         for i in required:
             if i not in reqjson['payload']:
-                return 400
+                return self.returnFailure(400)
                 
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         
         if not room:
-            return 400
+            return self.returnFailure(400)
         
         
         if reqjson["payload"]["user"] == "SYSTEM":
-            return 403
+            return self.returnFailure(403)
         
         # Check whether that user is authorised to connect to that room
         self.cursor.execute("SELECT username, room,passhash from users where username=? and room=?",(reqjson['payload']['user'],room))
@@ -377,7 +377,7 @@ class MsgHandler(object):
         # Now we need to verify they've supplied a correct password for that user
         stored = r[2].encode("utf-8")
         if stored != bcrypt.hashpw(reqjson['payload']['userpass'].encode('utf-8'),stored):
-            return 403
+            return self.returnFailure(403)
         
             
         # Tidy older messages away.
@@ -417,16 +417,16 @@ class MsgHandler(object):
         ''' Process a user's request to leave a room
         '''
         if "roomName" not in reqjson['payload'] or "user" not in reqjson['payload']:
-            return 400
+            return self.returnFailure(400)
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         
         if not room:
-            return 400
+            return self.returnFailure(400)
         
         # Check the user is actually in the room and authorised
         if not self.validateUser(reqjson['payload']):
-            return 400
+            return self.returnFailure(400)
         
         # Mark them as not in the room
         self.cursor.execute("UPDATE users set active=0 where username=? and room=?", (reqjson['payload']['user'],room))
@@ -448,16 +448,16 @@ class MsgHandler(object):
         '''
         
         if not self.validateUser(reqjson['payload']):
-            return 403
+            return self.returnFailure(403)
         
         
         if "roomName" not in reqjson['payload'] or "msg" not in reqjson['payload']:
-            return 400
+            return self.returnFailure(400)
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         print room
         if not room:
-            return 400
+            return self.returnFailure(400)
 
             
         self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,?)",(time.time(),room,reqjson['payload']['msg'],reqjson['payload']['user']))
@@ -486,17 +486,18 @@ class MsgHandler(object):
         curl -v -X POST http://127.0.0.1:8090/ -H "Content-Type: application/json" --data '{"action":"pollMsg","payload":"{\"roomName\":\"BenTest\", \"mylast\":1,\"user\":\"ben2\"}"}'
         
         '''
-        
-        if not self.validateUser(reqjson['payload']):
-            return 403
 
         if "mylast" not in reqjson['payload']:
-            return 400
+            return self.returnFailure(400)
         
         room = self.getRoomID(reqjson['payload']["roomName"])
         print room
         if not room:
-            return 400        
+            return self.returnFailure(400)
+
+
+        if not self.validateUser(reqjson['payload']):
+            return self.returnFailure(403,reqjson['payload'],room)
         
         self.cursor.execute("""SELECT id,msg,ts,user FROM messages
             WHERE room=? AND
@@ -591,6 +592,19 @@ class MsgHandler(object):
         msgid = self.cursor.lastrowid
         self.conn.commit()
         return msgid
+
+
+    def returnFailure(self,status,payload=False,room=False):
+        ''' For whatever reason, a request isn't being actioned. We need to return a status code
+        
+        However, in some instances, we may allow a HTTP 200 just once in order to send the user
+        information on why their next request will fail 
+        '''
+        
+        # TODO - implement the failure handling stuff
+        
+        return status
+        
 
 
     def genSessionKey(self,N=128):
