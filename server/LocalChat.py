@@ -77,6 +77,7 @@ class MsgHandler(object):
             ts INTEGER NOT NULL,
             room INTEGER NOT NULL,
             user NOT NULL,
+            touser TEXT DEFAULT '0',
             msg TEXT NOT NULL
         );
         
@@ -154,6 +155,9 @@ class MsgHandler(object):
         
         elif reqjson['action'] == "kickUser":
             return self.kickUser(reqjson,False)
+        
+        elif reqjson['action'] == 'sendDirectMsg':
+            return self.sendDirectMsg(reqjson)
         
         elif reqjson['action'] == 'sendMsg':
             return self.sendMsg(reqjson)
@@ -490,6 +494,53 @@ class MsgHandler(object):
                 "last" : last
             }
         
+
+
+    def sendDirectMsg(self,reqjson):
+        ''' Push a message to a user in the same room
+        '''
+        
+        if not self.validateUser(reqjson['payload']):
+            return self.returnFailure(403)
+                
+        required = ['roomName','msg','to']
+        for i in required:
+            if i not in reqjson['payload']:
+                return self.returnFailure(400)
+        
+        room = self.getRoomID(reqjson['payload']["roomName"])
+        print room
+        if not room:
+            return self.returnFailure(400)
+
+        # Check the other user is in the room and active
+        self.cursor.execute("SELECT username from users where username=? and room=? and active=1",(reqjson['payload']['to'],room))
+        r = self.cursor.fetchone()
+        
+        if not r:
+            return self.returnFailure(400)
+            
+        self.cursor.execute("INSERT INTO messages (ts,room,msg,user,touser) VALUES (?,?,?,?,?)",(time.time(),room,reqjson['payload']['msg'],reqjson['payload']['user'],reqjson['payload']['to']))
+        msgid = self.cursor.lastrowid
+        self.conn.commit()
+        
+        # Check the latest message ID for that room
+        self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
+        r = self.cursor.fetchone()
+        
+        if not r:
+            last = 0
+        else:
+            last = r[0]
+        
+        return {
+                "status" : "ok",
+                "msgid" : msgid,
+                "last" : last
+            }
+        
+
+
         
     def fetchMsgs(self,reqjson):
         ''' Check to see if there are any new messages in the room
@@ -510,11 +561,12 @@ class MsgHandler(object):
         if not self.validateUser(reqjson['payload']):
             return self.returnFailure(403,reqjson['payload'],room)
         
-        self.cursor.execute("""SELECT id,msg,ts,user FROM messages
+        self.cursor.execute("""SELECT id,msg,ts,user,touser FROM messages
             WHERE room=? AND
+            (touser = 0 OR touser = ?) AND 
             id > ?
             ORDER BY ts ASC           
-            """,(room,reqjson['payload']['mylast']))
+            """,(room,reqjson['payload']['user'],reqjson['payload']['mylast']))
         
         r = self.cursor.fetchall()
         

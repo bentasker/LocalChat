@@ -116,6 +116,10 @@ class msgHandler(object):
                     ]
             else:
                 
+                if i[4] != "0":
+                    color = 'brown'
+                    upstruser = 'DM %s' % (upstruser,)
+                
                 line = [
                     ts, # timestamp
                     "%s>" % (upstruser,), # To be replaced later
@@ -161,6 +165,43 @@ class msgHandler(object):
         
         return False
         
+
+
+    def sendDirectMsg(self,line,user,verb='say'):
+        ''' Send a direct message
+        '''
+        
+        if not self.room:
+            # We're not in a room. Abort
+            return False
+        
+        # Otherwise, build a payload
+        
+        msg = {
+            'user': self.user,
+            'text': line,
+            "verb": verb
+            }
+        
+        payload = {"roomName": self.room, 
+                   "msg":self.encrypt(json.dumps(msg)), # TODO this should use the user's key
+                   "to": user,
+                   "user": self.user,
+                   "sesskey": self.sesskey
+                   }
+        
+        request = {"action":"sendDirectMsg",
+                   "payload": json.dumps(payload)
+                   }
+
+        resp = self.sendRequest(request)        
+        
+        if resp['status'] == "ok":
+            return True
+        
+        return False
+
+
 
 
     def joinRoom(self,user,room,passw):
@@ -482,6 +523,25 @@ just extend with do_something  method to handle your commands"""
                 global c
                 c.output('Left the room','magenta')
                 return
+
+
+            if cmd == 'msg':
+                # /msg ben Hello ben this is a DM
+                line = ' '.join(args[1:])
+                r = msg.sendDirectMsg(line,args[0])
+                if not r:
+                    raise NotInRoom(line)
+                
+                # Otherwise push a copy of the message to display
+                # cos we won't get this one back from pollMsg
+                global c
+                
+                m = "%s DM %s>%s" % (msg.user,args[0],line)
+                
+                c.output(m,'blue')
+                
+                return
+
         
             if cmd == "room":
                 
@@ -660,6 +720,8 @@ You can also asynchronously output messages with Commander.output('message') """
               ('magenta', urwid.DARK_MAGENTA, urwid.BLACK), 
               ('yellow', urwid.YELLOW, urwid.BLACK), 
               ('cyan', urwid.LIGHT_CYAN, urwid.BLACK), 
+              ('brown', urwid.BROWN, urwid.BLACK), 
+              
               ]
     
     
