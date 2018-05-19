@@ -718,8 +718,8 @@ class MsgHandler(object):
         
 
 
-    def genSessionKey(self,N=128):
-        return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits).encode('utf-8') for _ in range(N))
+    def genSessionKey(self,N=48):
+        return ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits + '/=?&@#%^()+,.<>:!').encode('utf-8') for _ in range(N))
 
 
 
