@@ -13,8 +13,9 @@
 from flask import Flask
 from flask import request, make_response
 
-
-
+import thread
+import urllib2
+import ssl
 import sqlite3
 import time
 import os
@@ -54,12 +55,13 @@ def index(path):
 class MsgHandler(object):
 
 
-    def __init__(self):
+    def __init__(self,cronpass):
         self.conn = False
         self.cursor = False
         # Generate a key for encryption of SYSTEM messages (LOC-13)
         self.syskey = self.genpassw(16)
         self.gpg = gnupg.GPG()
+        self.cronpass = cronpass
 
 
 
@@ -127,6 +129,10 @@ class MsgHandler(object):
         
         
         print reqjson
+        
+        if "action" in reqjson and reqjson['action'] == 'schedulerTrigger':
+            return self.triggerClean(reqjson)
+        
         if "action" not in reqjson or "payload" not in reqjson:
             return self.returnFailure(400)
         
@@ -633,10 +639,24 @@ class MsgHandler(object):
         return r[0]
     
 
+
+    def triggerClean(self,reqjson):
+        ''' Trigger a clean of old messages etc
+        '''
+        
+        # Tidy messages older than 10 minutes
+        self.tidyMsgs(time.time() - 600);
+        
+        
+        return {'status':'ok'}
+        
+        
+
     def tidyMsgs(self,thresholdtime,room=False):
         ''' Remove messages older than the threshold time
         '''
         
+        print "Tidying"
         if room:
             # Tidy from a specific room
             self.cursor.execute("DELETE FROM messages where ts < ? and room = ?",(thresholdtime,room))
@@ -645,6 +665,10 @@ class MsgHandler(object):
         else:
             self.cursor.execute("DELETE FROM messages where ts < ?",(thresholdtime,))
             self.conn.commit()
+
+
+        # Tidy away any failure messages
+        self.cursor.execute("DELETE FROM failuremsgs  where expires < ?",(time.time(),))
 
 
 
@@ -738,12 +762,55 @@ class MsgHandler(object):
 
 
 
+# These will be handled properly later
+passw = 1234
+bindpoint = "https://127.0.0.1:8090" 
+
 
 # Create a global instance of the wrapper so that state can be retained
-msghandler = MsgHandler()
+#
+# We pass in the password we generated for the scheduler thread to use
+msghandler = MsgHandler(passw)
+
+
+# Create the scheduler function
+def taskScheduler(passw,bindpoint):
+    
+    
+    # Ignore cert errors
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    
+    data = json.dumps({"action":'schedulerTrigger',
+               "pass": passw
+            })
+    
+    while True:
+        time.sleep(60)
+        
+        try:
+            req = urllib2.Request(bindpoint, data, {'Content-Type': 'application/json'})
+            f = urllib2.urlopen(req,context=ctx)
+            response = f.read()
+            f.close()  
+        except:
+            # Don't let the thread abort just because one request went wrong
+            continue
+
+
+
 
 
 if __name__ == '__main__':
+    thread.start_new_thread(taskScheduler,(passw,bindpoint))
+
     # Bind to PORT if defined, otherwise default to 8090.
     port = int(os.environ.get('PORT', 8090))
     app.run(host='0.0.0.0', port=port,debug=True,ssl_context='adhoc')
+
+
+
+
+
+
