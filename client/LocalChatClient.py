@@ -40,6 +40,7 @@ class msgHandler(object):
         self.room = False
         self.roompass = False
         self.sesskey = False
+        self.syskey = False
         self.gpg = gnupg.GPG()
     
     
@@ -81,9 +82,10 @@ class msgHandler(object):
         # Otherwise, process the messages
         for i in resp["messages"]:
             self.last = i[0]
+            upstruser = i[3]
             
             try:
-                msgbody = json.loads(self.decrypt(i[1]))
+                msgbody = json.loads(self.decrypt(i[1],upstruser))
             except:
                 # Means an invalid message was received - LOC-8
                 to_print.append(['error','Received message which could not be decrypted'])
@@ -93,8 +95,7 @@ class msgHandler(object):
             # but not currently including that info in my curl tests. Also means test that part of the next block
             
             color = "green"
-            upstruser = i[3]
-            
+
             if upstruser == self.user:
                 # One of our own, change the color
                 color = "blue"
@@ -233,6 +234,7 @@ class msgHandler(object):
         self.last = resp['last']
         self.roompass = p[0] # The room password is the first section of the password
         self.sesskey = resp['session']
+        self.syskey = resp['syskey']
         return True
 
 
@@ -401,17 +403,19 @@ class msgHandler(object):
 
 
 
-    def decrypt(self,msg):
+    def decrypt(self,msg,sender):
         ''' Placeholder
         '''
-        
-        try:
-            # Check if it's json as it may be a system message
-            json.loads(msg)
-            return msg
+                
+        try:       
+            key = self.roompass
+            if sender == "SYSTEM":
+                key = self.syskey
+                
+            return str(self.gpg.decrypt(msg.decode("base64"),passphrase=key))
         
         except:
-            return str(self.gpg.decrypt(msg.decode("base64"),passphrase=self.roompass))
+            return False
         
     
 

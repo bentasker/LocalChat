@@ -22,6 +22,7 @@ import json
 import bcrypt
 import random
 import string
+import gnupg
 
 app = Flask(__name__)
 
@@ -56,6 +57,9 @@ class MsgHandler(object):
     def __init__(self):
         self.conn = False
         self.cursor = False
+        # Generate a key for encryption of SYSTEM messages (LOC-13)
+        self.syskey = self.genpassw(16)
+        self.gpg = gnupg.GPG()
 
 
 
@@ -234,7 +238,7 @@ class MsgHandler(object):
                 'name' : reqjson['payload']['roomName']
             }
         
-    
+
 
     def closeRoom(self,reqjson):
         ''' Close a room.
@@ -425,7 +429,7 @@ class MsgHandler(object):
         self.cursor.execute("INSERT INTO sessions (username,sesskey) values (?,?)", (reqjson['payload']['user'],sesskey))
         self.conn.commit()
                 
-        return {"status":"ok","last":last,"session":sesskey}
+        return {"status":"ok","last":last,"session":sesskey,"syskey":self.syskey}
         
         
     def processleaveRoom(self,reqjson):
@@ -651,7 +655,10 @@ class MsgHandler(object):
             "text":msg,
             "verb":verb
         }
-        self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,'SYSTEM')",(time.time(),room,json.dumps(m)))
+        
+        m = self.encryptSysMsg(json.dumps(m))
+        
+        self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,'SYSTEM')",(time.time(),room,m))
         msgid = self.cursor.lastrowid
         self.conn.commit()
         return msgid
@@ -665,7 +672,6 @@ class MsgHandler(object):
         '''
         self.cursor.execute("INSERT INTO failuremsgs (username,room,expires,msg) values (?,?,?,?)",(user,room,time.time() + 300,msg))
         self.conn.commit()
-        
         
         
 
@@ -698,8 +704,33 @@ class MsgHandler(object):
         
 
 
+    def encryptSysMsg(self,msg):
+        ''' Encrypt a message from system - LOC-13
+        
+            This isn't so much for protection of the data in memory (as the key is also in memory) as it
+            is to protect against a couple of things you could otherwise do in the client. See LOC-13 for
+            more info.
+        
+        '''
+        
+        crypted = self.gpg.encrypt(msg,None,passphrase=self.syskey,symmetric="AES256",armor=False)
+        return crypted.data.encode('base64')
+        
+
+
     def genSessionKey(self,N=128):
         return ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits).encode('utf-8') for _ in range(N))
+
+
+
+    def genpassw(self,N=16):
+        ''' Generate a random string of chars to act as an encryption password
+        '''
+        
+        return ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(N))
+
+    
+
 
 
     def test(self):
