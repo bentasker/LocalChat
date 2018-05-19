@@ -656,7 +656,7 @@ class MsgHandler(object):
             return 403
         
         # Tidy messages older than 10 minutes
-        self.tidyMsgs(time.time() - 600);
+        self.tidyMsgs(time.time() - 60); # TODO - change this back to 600 once testing complete
         
         
         return {'status':'ok'}
@@ -668,6 +668,11 @@ class MsgHandler(object):
         '''
         
         print "Tidying"
+        
+        self.cursor.execute("SELECT COUNT(*) from messages")
+        r = self.cursor.fetchone()
+        print "Start %s messages" % (r[0],)
+        
         if room:
             # Tidy from a specific room
             self.cursor.execute("DELETE FROM messages where ts < ? and room = ?",(thresholdtime,room))
@@ -676,6 +681,11 @@ class MsgHandler(object):
         else:
             self.cursor.execute("DELETE FROM messages where ts < ?",(thresholdtime,))
             self.conn.commit()
+
+
+        self.cursor.execute("SELECT COUNT(*) from messages")
+        r = self.cursor.fetchone()
+        print "End %s messages" % (r[0],)
 
 
         # Tidy away any failure messages
