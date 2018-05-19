@@ -55,7 +55,7 @@ def index(path):
 class MsgHandler(object):
 
 
-    def __init__(self,cronpass,bindpoint):
+    def __init__(self,cronpass,bindpoint,purgeinterval):
         self.conn = False
         self.cursor = False
         # Generate a key for encryption of SYSTEM messages (LOC-13)
@@ -63,6 +63,7 @@ class MsgHandler(object):
         self.gpg = gnupg.GPG()
         self.cronpass = cronpass
         self.bindpoint = bindpoint
+        self.purgeInterval = purgeinterval
 
 
 
@@ -656,7 +657,7 @@ class MsgHandler(object):
             return 403
         
         # Tidy messages older than 10 minutes
-        self.tidyMsgs(time.time() - 60); # TODO - change this back to 600 once testing complete
+        self.tidyMsgs(time.time() - self.purgeInterval);
         
         
         return {'status':'ok'}
@@ -666,13 +667,7 @@ class MsgHandler(object):
     def tidyMsgs(self,thresholdtime,room=False):
         ''' Remove messages older than the threshold time
         '''
-        
-        print "Tidying"
-        
-        self.cursor.execute("SELECT COUNT(*) from messages")
-        r = self.cursor.fetchone()
-        print "Start %s messages" % (r[0],)
-        
+
         if room:
             # Tidy from a specific room
             self.cursor.execute("DELETE FROM messages where ts < ? and room = ?",(thresholdtime,room))
@@ -681,12 +676,6 @@ class MsgHandler(object):
         else:
             self.cursor.execute("DELETE FROM messages where ts < ?",(thresholdtime,))
             self.conn.commit()
-
-
-        self.cursor.execute("SELECT COUNT(*) from messages")
-        r = self.cursor.fetchone()
-        print "End %s messages" % (r[0],)
-
 
         # Tidy away any failure messages
         self.cursor.execute("DELETE FROM failuremsgs  where expires < ?",(time.time(),))
@@ -810,13 +799,13 @@ if __name__ == '__main__':
     # These will be handled properly later
     passw = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(64))
     bindpoint = "https://127.0.0.1:8090" 
-
+    purgeinterval = 600 # Wipe messages older than 10 mins
 
     # Create a global instance of the wrapper so that state can be retained
     #
     # We pass in the password we generated for the scheduler thread to use
     # as well as the URL it should POST to
-    msghandler = MsgHandler(passw,bindpoint)
+    msghandler = MsgHandler(passw,bindpoint,purgeinterval)
 
 
     # Bind to PORT if defined, otherwise default to 8090.
