@@ -764,14 +764,6 @@ class MsgHandler(object):
         
         return ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(N))
 
-    
-
-
-
-    def test(self):
-        return ['foo']
-
-
 
 
 # Create the scheduler function
