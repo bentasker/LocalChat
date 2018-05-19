@@ -546,6 +546,11 @@ class MsgHandler(object):
         msgid = self.cursor.lastrowid
         self.conn.commit()
         
+        # Update the last activity field in the DB
+        # See LOC-11
+        self.cursor.execute("UPDATE rooms set lastactivity=? where id=?",(time.time(),room))
+        self.conn.commit()        
+        
         # Check the latest message ID for that room
         self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
         r = self.cursor.fetchone()
@@ -701,6 +706,11 @@ class MsgHandler(object):
         
         self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,'SYSTEM')",(time.time(),room,m))
         msgid = self.cursor.lastrowid
+        
+        # Update the last activity field in the DB
+        # See LOC-11
+        self.cursor.execute("UPDATE rooms set lastactivity=? where id=?",(time.time(),room))
+        
         self.conn.commit()
         return msgid
 
