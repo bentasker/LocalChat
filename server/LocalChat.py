@@ -55,7 +55,7 @@ def index(path):
 class MsgHandler(object):
 
 
-    def __init__(self,cronpass,bindpoint,purgeinterval):
+    def __init__(self,cronpass,bindpoint,purgeinterval,closethresh):
         self.conn = False
         self.cursor = False
         # Generate a key for encryption of SYSTEM messages (LOC-13)
@@ -64,6 +64,7 @@ class MsgHandler(object):
         self.cronpass = cronpass
         self.bindpoint = bindpoint
         self.purgeInterval = purgeinterval
+        self.roomCloseThresh = closethresh
 
 
 
@@ -671,6 +672,8 @@ class MsgHandler(object):
         # Tidy messages older than 10 minutes
         self.tidyMsgs(time.time() - self.purgeInterval);
         
+        # Auto-close any rooms beyond the threshold
+        self.autoCloseRooms()
         
         return {'status':'ok'}
         
@@ -691,6 +694,28 @@ class MsgHandler(object):
 
         # Tidy away any failure messages
         self.cursor.execute("DELETE FROM failuremsgs  where expires < ?",(time.time(),))
+
+
+
+
+    def autoCloseRooms(self):
+        ''' Automatically close any rooms that have been sat idle for too long
+        '''
+        
+        self.cursor.execute("SELECT id,name from rooms where lastactivity < ? and lastactivity > 0",(time.time() - self.roomCloseThresh,))
+        rooms = self.cursor.fetchall()
+        
+        # Messages probably have been auto-purged, but make sure
+        for r in rooms:
+            self.cursor.execute("DELETE FROM messages where room=?",(r[0],))
+            self.cursor.execute("DELETE FROM failuremsgs where room=?",(r[0],))
+            self.cursor.execute("DELETE FROM users where room=?",(r[0],))
+            self.cursor.execute("DELETE FROM sessions where sesskey like ?", (r[1] + '-%',))
+            self.cursor.execute("DELETE FROM rooms where id=?",(r[0],))
+            self.conn.commit()
+            
+            
+        
 
 
 
@@ -817,12 +842,13 @@ if __name__ == '__main__':
     passw = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(64))
     bindpoint = "https://127.0.0.1:8090" 
     purgeinterval = 600 # Wipe messages older than 10 mins
+    closethresh = 3600 * 6 # Auto-close rooms after 6 hours of inactivity
 
     # Create a global instance of the wrapper so that state can be retained
     #
     # We pass in the password we generated for the scheduler thread to use
     # as well as the URL it should POST to
-    msghandler = MsgHandler(passw,bindpoint,purgeinterval)
+    msghandler = MsgHandler(passw,bindpoint,purgeinterval,closethresh)
 
 
     # Bind to PORT if defined, otherwise default to 8090.
