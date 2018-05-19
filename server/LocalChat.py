@@ -76,7 +76,8 @@ class MsgHandler(object):
         sql = """ CREATE TABLE rooms (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
-            owner TEXT NOT NULL
+            owner TEXT NOT NULL,
+            lastactivity INTEGER DEFAULT 0
         );
         
         
@@ -502,6 +503,12 @@ class MsgHandler(object):
             last = 0
         else:
             last = r[0]
+        
+        
+        # Update the last activity field in the DB
+        # See LOC-11
+        self.cursor.execute("UPDATE rooms set lastactivity=? where id=?",(time.time(),room))
+        self.conn.commit()
         
         return {
                 "status" : "ok",
