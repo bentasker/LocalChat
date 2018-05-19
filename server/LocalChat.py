@@ -55,13 +55,14 @@ def index(path):
 class MsgHandler(object):
 
 
-    def __init__(self,cronpass):
+    def __init__(self,cronpass,bindpoint):
         self.conn = False
         self.cursor = False
         # Generate a key for encryption of SYSTEM messages (LOC-13)
         self.syskey = self.genpassw(16)
         self.gpg = gnupg.GPG()
         self.cronpass = cronpass
+        self.bindpoint = bindpoint
 
 
 
@@ -115,6 +116,9 @@ class MsgHandler(object):
         """
         
         self.conn.executescript(sql)
+        
+        # We also need to start the scheduler thread (LOC-6)
+        thread.start_new_thread(taskScheduler,(self.cronpass,self.bindpoint))
 
 
 
@@ -644,6 +648,13 @@ class MsgHandler(object):
         ''' Trigger a clean of old messages etc
         '''
         
+        if 'pass' not in reqjson:
+            # No need for failure messages here
+            return 403
+        
+        if reqjson['pass'] != self.cronpass:
+            return 403
+        
         # Tidy messages older than 10 minutes
         self.tidyMsgs(time.time() - 600);
         
@@ -762,16 +773,6 @@ class MsgHandler(object):
 
 
 
-# These will be handled properly later
-passw = 1234
-bindpoint = "https://127.0.0.1:8090" 
-
-
-# Create a global instance of the wrapper so that state can be retained
-#
-# We pass in the password we generated for the scheduler thread to use
-msghandler = MsgHandler(passw)
-
 
 # Create the scheduler function
 def taskScheduler(passw,bindpoint):
@@ -783,7 +784,7 @@ def taskScheduler(passw,bindpoint):
     ctx.verify_mode = ssl.CERT_NONE
     
     data = json.dumps({"action":'schedulerTrigger',
-               "pass": passw
+            "pass": passw
             })
     
     while True:
@@ -798,12 +799,23 @@ def taskScheduler(passw,bindpoint):
             # Don't let the thread abort just because one request went wrong
             continue
 
-
-
+    
 
 
 if __name__ == '__main__':
-    thread.start_new_thread(taskScheduler,(passw,bindpoint))
+    
+    
+    # These will be handled properly later
+    passw = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(64))
+    bindpoint = "https://127.0.0.1:8090" 
+
+
+    # Create a global instance of the wrapper so that state can be retained
+    #
+    # We pass in the password we generated for the scheduler thread to use
+    # as well as the URL it should POST to
+    msghandler = MsgHandler(passw,bindpoint)
+
 
     # Bind to PORT if defined, otherwise default to 8090.
     port = int(os.environ.get('PORT', 8090))
