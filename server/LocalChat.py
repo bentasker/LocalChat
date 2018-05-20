@@ -869,7 +869,7 @@ if __name__ == '__main__':
     if '--testing-mode-enable' in sys.argv:
         testingmode = True
         purgeinterval = 30
-        
+        closethresh = 180
     
     # Create a global instance of the wrapper so that state can be retained
     #
