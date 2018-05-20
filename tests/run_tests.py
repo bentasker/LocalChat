@@ -719,14 +719,12 @@ def test_twelve(msg):
     # Re-join as testuser2
     n = STORAGE['testuser2']['clientInstance'].joinRoom(STORAGE['testuser2']['User'],
                                                         STORAGE['testuser2']['room'],STORAGE['testuser2']['pass'])
-    
     if not n:
         result['Notes'] = 'TestUser2 could not join'
         return [result,isFatal]
     
     # Now have the admin ban them
     msg.kickUser('testuser2',True)
-    
     
     # Check that a failure message was written
     CONN,CURSOR = opendb()
