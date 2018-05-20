@@ -142,7 +142,7 @@ def run_tests():
     
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
-             'test_five']
+             'test_five','test_six']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -383,6 +383,35 @@ def test_five(msg):
             result['Notes'] = 'Not valid JSON'
             return [result,isFatal]              
     
+
+
+def test_six(msg):
+    ''' Invite a user
+    '''
+    result = {'Test' : 'Invite a user','Result' : 'FAIL', 'Notes': '' }
+    isFatal = True
+    
+    n = msg.inviteUser('testuser')
+    if not n:
+        result['Notes'] = 'Could not invite testuser'
+        return [result,isFatal]
+    
+    if len(n) < 4:
+        result['Notes'] = 'Client returned too short response'
+        return [result,isFatal]
+        
+    # Otherwise, we've got details for a new user to be able to join
+    #
+    # Store them for a later test
+    
+    STORAGE['testuser'] = {
+        'room':n[0],
+        'pass':"%s:%s" % (n[1],n[2]),
+        'user':n[3]
+        }
+    
+    result['Result'] = "Pass"
+    return [result,isFatal]
 
 
 if __name__ == '__main__':
