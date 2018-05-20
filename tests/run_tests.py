@@ -143,7 +143,7 @@ def run_tests():
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
              'test_five','test_six','test_seven','test_eight',
-             'test_nine','test_ten']
+             'test_nine','test_ten','test_eleven','test_twelve']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -612,7 +612,175 @@ def test_ten(msg):
     result['Result'] = 'Pass'
     return [result,isFatal]
     
+
+
+def test_eleven(msg):
+    ''' Invite a new user and then have admin kick them to ensure they're 
+    actually kicked out of the room
     
+    '''
+    result = {'Test' : 'Invite and kick a user','Result' : 'FAIL', 'Notes': '' }
+    isFatal = True
+    
+    n = msg.inviteUser('testuser2')
+    if not n:
+        result['Notes'] = 'Could not invite testuser2'
+        return [result,isFatal]
+    
+    if len(n) < 4:
+        result['Notes'] = 'Client returned too short response'
+        return [result,isFatal]
+        
+    # Otherwise, we've got details for a new user to be able to join
+    #
+    # Store them for a later test
+    
+    STORAGE['testuser2'] = {
+        'room':n[0],
+        'pass':"%s:%s" % (n[1],n[2]),
+        'User':n[3]
+        }
+    
+    # Create a new instance so we can join as testuser2
+    usermsg = getClientInstance();
+    n = usermsg.joinRoom(STORAGE['testuser2']['User'],STORAGE['testuser2']['room'],STORAGE['testuser2']['pass'])
+    
+    if not n:
+        result['Notes'] = 'User could not join'
+        return [result,isFatal]
+    
+    STORAGE['testuser2']['clientInstance'] = usermsg
+    
+    # Now have the admin kick (but not ban) them
+    msg.kickUser('testuser2',False)
+    
+    
+    # Check that a failure message was written
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT msg FROM failuremsgs where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r:
+        result['Notes'] = 'User not notified'
+        return [result,isFatal]  
+        
+    # Poll to receive the failure message and verify it's deleted
+    msgs = STORAGE['testuser2']['clientInstance'].pollForMessage()
+    
+    if len(msgs) < 1:
+        result['Notes'] = "User didn't receive notification"
+        return [result,isFatal]        
+    
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT msg FROM failuremsgs where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if r:
+        result['Notes'] = 'Notification not purged on poll'
+        return [result,isFatal]  
+    
+    # Now check that their session was suspended
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT username FROM users where username=? and active=1",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if r:
+        result['Notes'] = 'User still considered active in room'
+        return [result,isFatal]         
+    
+    # Check if their session still exists
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT username FROM sessions where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()    
+    if r:
+        result['Notes'] = 'User still has active session'
+        return [result,isFatal]        
+    
+    # Otherwise, looks good
+    result['Result'] = "Pass"
+    return [result,isFatal]
+
+
+def test_twelve(msg):
+    ''' Rejoin as the previously invited user, and then ban them
+    
+    
+    '''
+    result = {'Test' : 'Ban a user','Result' : 'FAIL', 'Notes': '' }
+    isFatal = True
+    
+    # Flush the failedmessage queue
+    f = STORAGE['testuser2']['clientInstance'].pollForMessage()
+    
+    # Re-join as testuser2
+    n = STORAGE['testuser2']['clientInstance'].joinRoom(STORAGE['testuser2']['User'],
+                                                        STORAGE['testuser2']['room'],STORAGE['testuser2']['pass'])
+    
+    if not n:
+        result['Notes'] = 'TestUser2 could not join'
+        return [result,isFatal]
+    
+    # Now have the admin ban them
+    msg.kickUser('testuser2',True)
+    
+    
+    # Check that a failure message was written
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT msg FROM failuremsgs where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r:
+        result['Notes'] = 'User not notified'
+        return [result,isFatal]  
+    
+    # Poll to receive the failure message and verify it's deleted
+    msgs = STORAGE['testuser2']['clientInstance'].pollForMessage()
+    
+    if len(msgs) < 1:
+        result['Notes'] = "User didn't receive notification"
+        return [result,isFatal]        
+    
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT msg FROM failuremsgs where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if r:
+        result['Notes'] = 'Notification not purged on poll'
+        return [result,isFatal]  
+   
+    # Now check that their session was suspended
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT username FROM users where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if r:
+        result['Notes'] = 'User still exists for room'
+        return [result,isFatal]         
+    
+    # Check if their session still exists
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT username FROM sessions where username=?",(STORAGE['testuser2']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()    
+    if r:
+        result['Notes'] = 'User still has active session'
+        return [result,isFatal]        
+    
+    # We don't need this any more
+    del STORAGE['testuser2']
+    
+    # Otherwise, looks good
+    result['Result'] = "Pass"
+    return [result,isFatal]
+
+
     
 
 
