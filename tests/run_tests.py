@@ -142,7 +142,7 @@ def run_tests():
     
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
-             'test_five','test_six','test_seven']
+             'test_five','test_six','test_seven','test_eight']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -468,6 +468,49 @@ def test_seven(msg):
     return [result,isFatal]
 
 
+def test_eight(msg):
+    ''' Have the testuser send a message and ensure that the adminuser receives it
+    
+    We first call pollMsg to flush the message queue
+    '''
+    
+    result = {'Test' : 'Send a Message','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+        
+    # Poll for messages to clear the queue
+    f = msg.pollForMessage()
+    
+    testpayload = 'The admin is a ....'
+    # Now send a message as test user
+    STORAGE['testuser']['clientInstance'].sendMsg(testpayload)
+    
+    # Now call pollMsg as admin to ensure we receive the message
+    received = msg.pollForMessage()
+
+    # Poll as testuser to clear the queue ready for future tests
+    f = STORAGE['testuser']['clientInstance'].pollForMessage()
+    
+    if len(received) < 1:
+        result['Notes'] = 'No messages received'
+        return [result,isFatal]
+    
+    if len(received[0]) < 2:
+        result['Notes'] = 'Malformed message returned'
+        return [result,isFatal]
+        
+    # Now check the payload
+    #
+    # We need to trim out the timestamp etc
+    r = received[0][1].split('>')
+    m = r[1].lstrip()
+    if testpayload != m:
+        result['Notes'] = 'Incorrect message received: (%s)v(%s)' % (testpayload,received[0][1])
+        return [result,isFatal]
+        
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+
+    
 
 
 if __name__ == '__main__':
