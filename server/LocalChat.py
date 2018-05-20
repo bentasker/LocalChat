@@ -858,18 +858,19 @@ def taskScheduler(passw,bindpoint):
 
 if __name__ == '__main__':
     
-    # LOC-15
-    testingmode = False
-    if '--testing-mode-enable' in sys.argv:
-        testingmode = True
-    
-    
     # These will be handled properly later
     passw = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(64))
     bindpoint = "https://127.0.0.1:8090" 
     purgeinterval = 600 # Wipe messages older than 10 mins
     closethresh = 3600 * 6 # Auto-close rooms after 6 hours of inactivity
-
+    
+    # LOC-15
+    testingmode = False
+    if '--testing-mode-enable' in sys.argv:
+        testingmode = True
+        purgeinterval = 30
+        
+    
     # Create a global instance of the wrapper so that state can be retained
     #
     # We pass in the password we generated for the scheduler thread to use
