@@ -143,7 +143,8 @@ def run_tests():
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
              'test_five','test_six','test_seven','test_eight',
-             'test_nine','test_ten','test_eleven','test_twelve']
+             'test_nine','test_ten','test_eleven','test_twelve',
+             'test_thirteen','test_fourteen']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -779,7 +780,162 @@ def test_twelve(msg):
     return [result,isFatal]
 
 
+
+def test_thirteen(msg):
+    ''' Check that message purging is actually happening
     
+    Essentially, we send a message, wait 90 seconds and then check if it's gone
+    
+    '''
+    result = {'Test' : 'Automated message expiration','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+    
+    msg.sendMsg('This is a test message')
+    
+    # Open the DB and verify there are messages in the queue now
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from messages")
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r or r[0] < 1:
+        result['Notes'] = 'Messages not getting into queue'
+        return [result,isFatal]  
+     
+    # Now, we wait
+    time.sleep(90)
+    
+    # Re-open the database and the messages should be gone
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from messages")
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if r and r[0] > 0:
+        result['Notes'] = 'Messages not purged'
+        return [result,isFatal]  
+         
+    # Otherwise, we're good
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+
+
+def test_fourteen(msg):
+    ''' Check that auto room closure happens
+    
+    Essentially, we send a message, wait 240 seconds and then check if it's gone
+    
+    In testing mode, closure is after 3 mins, but we wait an extra minute to make sure the scheduler has run
+    
+    
+    '''
+    result = {'Test' : 'Automated Room Closure','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+    
+    newmsg = getClientInstance()
+
+    n = newmsg.createRoom('TestRoom2','testadmin2')
+    if not n:
+        result['Notes'] = 'Empty Response'
+        return [result,isFatal]
+
+    # The client should have given us two passwords
+    if len(n) < 2:
+        result['Notes'] = 'Response too small'
+        return [result,isFatal]
+
+    # Seperate out the return value
+    roompass = n[0]
+    userpass = n[1] # user specific password
+
+    n = newmsg.joinRoom('testadmin2','TestRoom2',
+                    "%s:%s" % (n[0],n[1])
+                    )
+    if not n:
+        result['Notes'] = 'Could not join'
+        return [result,isFatal]
+    
+    # Get the room ID
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT id from rooms where name=?",('TestRoom2',))
+    r = CURSOR.fetchone()
+    CONN.close()    
+    
+    room = r[0]
+    
+    newmsg.sendMsg('This is a test message')
+    
+    # Open the DB and verify there are messages in the queue now
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from messages where room=?",(room,))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r or r[0] < 1:
+        result['Notes'] = 'Messages not getting into queue'
+        return [result,isFatal]  
+     
+    # Now, we wait
+    time.sleep(240)
+    
+    # Re-open the database and the messages should be gone
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from messages where room=?",(room,))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if r and r[0] > 0:
+        result['Notes'] = 'Messages not purged'
+        return [result,isFatal]  
+
+    # The room should be gone
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from rooms where name=?",('TestRoom2',))
+    r = CURSOR.fetchone()
+    CONN.close()
+
+    if r and r[0] > 0:
+        result['Notes'] = 'Room record not deleted'
+        return [result,isFatal]          
+
+    # Check the user records have gone
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from users where room=?",(room,))
+    r = CURSOR.fetchone()
+    CONN.close()
+
+    if r and r[0] > 0:
+        result['Notes'] = 'User records not deleted'
+        return [result,isFatal]          
+    
+    # Check Failure messages have gone
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from failuremsgs where room=?",(room,))
+    r = CURSOR.fetchone()
+    CONN.close()
+
+    if r and r[0] > 0:
+        result['Notes'] = 'Failure Messages not deleted'
+        return [result,isFatal]          
+    
+    # Check Sessions have gone
+    CONN,CURSOR = opendb()
+    CURSOR.execute("SELECT count(*) from sessions where sesskey like 'TestRoom2-%'")
+    r = CURSOR.fetchone()
+    CONN.close()
+
+    if r and r[0] > 0:
+        result['Notes'] = 'User Sessions not deleted'
+        return [result,isFatal]          
+    
+    # Otherwise, we're good
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+
+
+
+
+
 
 
 if __name__ == '__main__':
