@@ -10,6 +10,7 @@ import sys
 import time
 import sqlite3
 import traceback
+import json
 
 
 try:
@@ -131,7 +132,7 @@ def run_tests():
     msg = getClientInstance();
     
     test_results = []
-    tests = ['test_one','test_two','test_three']
+    tests = ['test_one','test_two','test_three','test_four']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -264,6 +265,50 @@ def test_three(msg):
     return [result,True]
 
 
+def test_four(msg):
+    ''' When we joined, SYSTEM will have pushed a message. Ensure it's encrypted
+    '''
+    
+    result = {'Test' : 'SYSTEM uses E2E','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+
+    CURSOR.execute("SELECT msg FROM messages where user='SYSTEM' ORDER BY ts DESC")
+    r = CURSOR.fetchone()
+    
+    if not r:
+        result['Notes'] = 'No System Message'
+        return [result,isFatal]
+    
+    
+    try:
+        json.loads(r[0])
+        result['Notes'] = 'System Message not E2E encrypted'
+        return [result,isFatal]       
+    except:
+        # This is a good thing in this case!
+        
+        # Now try and decrypt the message
+        m = msg.decrypt(r[0],'SYSTEM')
+        if not m:
+            result['Notes'] = 'Could not decrypt'
+            return [result,isFatal]     
+    
+        # Now check we got valid json
+        try:
+            j = json.loads(m)
+            # Finally
+            if "text" not in j or "verb" not in j:
+                result['Notes'] = 'Not valid msg payload'
+                return [result,isFatal]              
+            
+            # Otherwise, we're good
+            result['Result'] = 'Pass'
+            return [result,isFatal]
+            
+        except:
+            result['Notes'] = 'Not valid JSON'
+            return [result,isFatal]              
+    
 
 
 
