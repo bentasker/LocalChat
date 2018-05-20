@@ -24,6 +24,8 @@ import bcrypt
 import random
 import string
 import gnupg
+import sys
+
 
 app = Flask(__name__)
 
@@ -43,7 +45,7 @@ def index(path):
         return make_response("",400)
     
     a = msghandler.processSubmission(reqjson)
-    
+
     # Check the status
     if a in [400,403,500]:
         response = make_response("",a)
@@ -55,7 +57,7 @@ def index(path):
 class MsgHandler(object):
 
 
-    def __init__(self,cronpass,bindpoint,purgeinterval,closethresh):
+    def __init__(self,cronpass,bindpoint,purgeinterval,closethresh,testingmode):
         self.conn = False
         self.cursor = False
         # Generate a key for encryption of SYSTEM messages (LOC-13)
@@ -65,23 +67,36 @@ class MsgHandler(object):
         self.bindpoint = bindpoint
         self.purgeInterval = purgeinterval
         self.roomCloseThresh = closethresh
+        self.testingMode = testingmode
+        
+        if self.testingMode:
+            print "WARNING - Messages will be written to disk"
 
 
 
     def createDB(self):
         ''' Create the in-memory database ready for use 
         '''
-        self.conn = sqlite3.connect(':memory:')
+        
+        dbpath=':memory:'
+        if self.testingMode:
+            # LOC-15 - allow DB to written to disk in test mode
+            dbpath = "%s/localchat-testing.db" % (os.getcwd(),)
+        
+        self.conn = sqlite3.connect(dbpath)
         self.cursor = self.conn.cursor()
         
-        sql = """ CREATE TABLE rooms (
+        sql = """
+        
+        DROP TABLE IF EXISTS rooms;
+        CREATE TABLE rooms (
             id INTEGER PRIMARY KEY,
             name TEXT NOT NULL UNIQUE,
             owner TEXT NOT NULL,
             lastactivity INTEGER DEFAULT 0
         );
         
-        
+        DROP TABLE IF EXISTS messages;
         CREATE TABLE messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             ts INTEGER NOT NULL,
@@ -91,7 +106,7 @@ class MsgHandler(object):
             msg TEXT NOT NULL
         );
         
-        
+        DROP TABLE IF EXISTS users;
         CREATE TABLE users (
             username TEXT NOT NULL,
             room INTEGER NOT NULL,
@@ -100,14 +115,14 @@ class MsgHandler(object):
             PRIMARY KEY (username,room)
         );
         
-        
+        DROP TABLE IF EXISTS sessions;
         CREATE TABLE sessions (
             username TEXT NOT NULL,
             sesskey TEXT NOT NULL,
             PRIMARY KEY(sesskey)
         );
         
-        
+        DROP TABLE IF EXISTS failuremsgs;
         CREATE TABLE failuremsgs (
             username TEXT NOT NULL,
             room INTEGER NOT NULL,
@@ -423,6 +438,12 @@ class MsgHandler(object):
         
         # Push a message to the room to note that the user joined
         msgid = self.pushSystemMsg("User %s joined the room" % (reqjson['payload']['user']),room)
+
+
+        # If we're in testing mode, push a warning so the new user can see it
+        if self.testingMode:
+            msgid = self.pushSystemMsg("Server is in testing mode. Messages are being written to disk",room,'syswarn')
+
 
         # Check the latest message ID for that room
         self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
@@ -837,6 +858,11 @@ def taskScheduler(passw,bindpoint):
 
 if __name__ == '__main__':
     
+    # LOC-15
+    testingmode = False
+    if '--testing-mode-enable' in sys.argv:
+        testingmode = True
+    
     
     # These will be handled properly later
     passw = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(64))
@@ -848,7 +874,7 @@ if __name__ == '__main__':
     #
     # We pass in the password we generated for the scheduler thread to use
     # as well as the URL it should POST to
-    msghandler = MsgHandler(passw,bindpoint,purgeinterval,closethresh)
+    msghandler = MsgHandler(passw,bindpoint,purgeinterval,closethresh,testingmode)
 
 
     # Bind to PORT if defined, otherwise default to 8090.
