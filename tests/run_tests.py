@@ -124,7 +124,16 @@ def make_table(columns, data):
 
 
 
+def opendb():
+    ''' We'll do this and then close after every query to make sure we don't
+    inadvertantly lock the DB and force tests to fail.
+    
+    '''
+    CONN = sqlite3.connect(DB_FILE)
+    CURSOR = CONN.cursor()
 
+    return [CONN,CURSOR]
+    
 
 def run_tests():
     
@@ -132,7 +141,8 @@ def run_tests():
     msg = getClientInstance();
     
     test_results = []
-    tests = ['test_one','test_two','test_three','test_four']
+    tests = ['test_one','test_two','test_three','test_four',
+             'test_five']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -177,9 +187,13 @@ def test_one(msg):
                        'User':'testadmin'
                        }
     
+    
+    CONN,CURSOR = opendb()
+    
     # Check the DB to ensure the room was actually created
     CURSOR.execute("SELECT * from rooms where name=?",('TestRoom1',))
     r = CURSOR.fetchone()
+    CONN.close()
     
     if not r:
         result['Notes'] = 'Room not in DB'
@@ -233,9 +247,12 @@ def test_three(msg):
         result['Notes'] = 'Could not join'
         return [result,isFatal]
     
+    CONN,CURSOR = opendb()
+    
     # Check the DB to ensure we're now active
     CURSOR.execute("SELECT * from users where username=? and active=1",(STORAGE['room']['User'],))
     r = CURSOR.fetchone()
+    CONN.close()
     
     if not r:
         result['Notes'] = 'Not Active in DB'
@@ -275,8 +292,12 @@ def test_four(msg):
     result = {'Test' : 'SYSTEM uses E2E','Result' : 'FAIL', 'Notes': '' }
     isFatal = False
 
+
+    CONN,CURSOR = opendb()
+
     CURSOR.execute("SELECT msg FROM messages where user='SYSTEM' ORDER BY ts DESC")
     r = CURSOR.fetchone()
+    CONN.close()
     
     if not r:
         result['Notes'] = 'No System Message'
@@ -313,7 +334,55 @@ def test_four(msg):
             return [result,isFatal]              
     
 
-
+def test_five(msg):
+    ''' Send a message and ensure it's encrypted in the DB
+    '''
+    
+    result = {'Test' : 'Ensure payloads are encrypted','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+    
+    msg.sendMsg('Hello World')
+    
+    CONN,CURSOR = opendb()
+    
+    CURSOR.execute("SELECT msg FROM messages where user=? ORDER BY ts DESC",(STORAGE['room']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r:
+        result['Notes'] = 'Message not recorded'
+        return [result,isFatal]
+    
+    
+    try:
+        json.loads(r[0])
+        result['Notes'] = 'Message not E2E encrypted'
+        return [result,isFatal]       
+    except:
+        # This is a good thing in this case!
+        
+        # Now try and decrypt the message
+        m = msg.decrypt(r[0],STORAGE['room']['User'])
+        if not m:
+            result['Notes'] = 'Could not decrypt'
+            return [result,isFatal]     
+    
+        # Now check we got valid json
+        try:
+            j = json.loads(m)
+            # Finally
+            if "text" not in j or "verb" not in j:
+                result['Notes'] = 'Not valid msg payload'
+                return [result,isFatal]              
+            
+            # Otherwise, we're good
+            result['Result'] = 'Pass'
+            return [result,isFatal]
+            
+        except:
+            result['Notes'] = 'Not valid JSON'
+            return [result,isFatal]              
+    
 
 
 if __name__ == '__main__':
@@ -325,10 +394,6 @@ if __name__ == '__main__':
         # abort, abort, abort
         exit(proc1,1)
 
-    
-    
-    CONN = sqlite3.connect(DB_FILE)
-    CURSOR = CONN.cursor()
     
     try:
         # I don't like generic catchall exceptions
