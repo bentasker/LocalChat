@@ -11,6 +11,7 @@ import time
 import sqlite3
 import traceback
 import json
+import datetime
 
 
 try:
@@ -952,7 +953,13 @@ if __name__ == '__main__':
         # I don't like generic catchall exceptions
         # but, we want to make sure we kill the background
         # process if there is one.
+        cmd = "git show | head -n1"
+        ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        revision = ps.communicate()[0].split(" ")[1]
+        now = datetime.datetime.utcnow().strftime("%Y%m%d%H%M%S")
+        print """Test Run %s-%s""" % (now,revision)
         results = run_tests()
+        
     except Exception as e:
         print traceback.format_exc()
         print e
