@@ -143,7 +143,7 @@ def run_tests():
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
              'test_five','test_six','test_seven','test_eight',
-             'test_nine']
+             'test_nine','test_ten']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -562,6 +562,57 @@ def test_nine(msg):
     return [result,isFatal]
 
 
+def test_ten(msg):
+    ''' Send a direct message and ensure it's received
+    
+    '''
+    
+    result = {'Test' : 'Send a Direct Message','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+    
+    # Poll for messages to clear the queue
+    f = msg.pollForMessage()
+    f = STORAGE['testuser']['clientInstance'].pollForMessage()
+    
+    testpayload = 'Hi Hi'
+    
+    # Now send a direct message from test user to admin
+    n = STORAGE['testuser']['clientInstance'].sendDirectMsg(testpayload,'testadmin')
+    if not n:
+        result['Notes'] = 'Could not send direct message'
+        return [result,isFatal]
+    
+    # Poll as the admin user to ensure it was received
+    received = msg.pollForMessage()
+    
+    # Poll as testuser to clear the queue ready for future tests
+    f = STORAGE['testuser']['clientInstance'].pollForMessage()
+    
+    if len(received) < 1:
+        result['Notes'] = 'No messages received'
+        return [result,isFatal]
+    
+    if len(received[0]) < 2:
+        result['Notes'] = 'Malformed message returned'
+        return [result,isFatal]
+        
+    # Now check the payload
+    #
+    # We need to trim out the timestamp etc
+    r = received[0][1].split('>')
+    m = r[1].lstrip()
+    if testpayload != m:
+        result['Notes'] = 'Incorrect message received: (%s)v(%s)' % (testpayload,m)
+        return [result,isFatal]
+        
+    if "DM" not in r[0]:
+        result['Notes'] = 'Envelope not marked as DM: %s' % (r[0],)
+        return [result,isFatal]
+        
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+    
+    
     
 
 
