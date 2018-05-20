@@ -8,6 +8,8 @@ import psutil
 import os
 import sys
 import time
+import sqlite3
+import traceback
 
 
 try:
@@ -16,6 +18,13 @@ except ImportError:
     import os
     DEVNULL = open(os.devnull, 'wb')
 
+
+DB_FILE = "%s/localchat-testing.db" % (os.getcwd(),)
+PARENT_DIR = "%s/.." % (os.path.dirname(os.path.abspath(__file__)),)
+sys.path.append('%s/client/' % (PARENT_DIR,))
+
+import LocalChatClient
+STORAGE = {}
 
 
 def restartServer(proc1):
@@ -29,15 +38,22 @@ def restartServer(proc1):
         kill(proc1.pid)
     
     try:
-        serverloc = "%s/../server/LocalChat.py" % (os.path.dirname(os.path.abspath(__file__)),)
-        print serverloc
+        serverloc = "%s/server/LocalChat.py" % (PARENT_DIR,)
         proc1 = subprocess.Popen([serverloc,'--testing-mode-enable'],stderr=subprocess.STDOUT,stdout=DEVNULL)
     except Exception as e:
         print "Failed to start server"
         print e
         return False
     
+    # Give it time to start up
+    time.sleep(5)
     return proc1
+
+
+def getClientInstance():
+    ''' Get an instance of the client class
+    '''
+    return LocalChatClient.msgHandler()
 
 
 def exit(proc1,code=0):
@@ -48,6 +64,7 @@ def exit(proc1,code=0):
         kill(proc1.pid)
         
     sys.exit(code)
+
 
 
 def kill(proc_pid):
@@ -64,6 +81,191 @@ def kill(proc_pid):
 
 
 
+def make_table(columns, data):
+    """Create an ASCII table and return it as a string.
+
+    Pass a list of strings to use as columns in the table and a list of
+    dicts. The strings in 'columns' will be used as the keys to the dicts in
+    'data.'
+
+
+    https://snippets.bentasker.co.uk/page-1705192300-Make-ASCII-Table-Python.html
+    """
+    # Calculate how wide each cell needs to be
+    cell_widths = {}
+    for c in columns:
+        lens = []
+        values = [lens.append(len(str(d.get(c, "")))) for d in data]
+        lens.append(len(c))
+        lens.sort()
+        cell_widths[c] = max(lens)
+
+    # Used for formatting rows of data
+    row_template = "|" + " {} |" * len(columns)
+
+    # CONSTRUCT THE TABLE
+
+    # The top row with the column titles
+    justified_column_heads = [c.ljust(cell_widths[c]) for c in columns]
+    header = row_template.format(*justified_column_heads)
+    # The second row contains separators
+    sep = "|" + "-" * (len(header) - 2) + "|"
+    end = "-" * len(header)
+    # Rows of data
+    rows = []
+
+    for d in data:
+        fields = [str(d.get(c, "")).ljust(cell_widths[c]) for c in columns]
+        row = row_template.format(*fields)
+        rows.append(row)
+    rows.append(end)
+    return "\n".join([header, sep] + rows)
+
+
+
+
+
+def run_tests():
+    
+    # Get an instance of the client
+    msg = getClientInstance();
+    
+    test_results = []
+    tests = ['test_one','test_two','test_three']
+    
+    for test in tests:
+        print "Running %s " % (test,)
+        stat,isFatal = globals()[test](msg)
+        test_results.append(stat)
+        if isFatal and stat['Result'] == 'FAIL':
+            break
+
+
+    return test_results
+
+
+
+
+def test_one(msg):
+    ''' Create a room and verify that it gets created
+    '''
+    
+    result = {'Test' : 'Create a Room','Result' : 'FAIL', 'Notes': '' }
+    # Test 1 - create a room and check it's recorded in the DB
+    n = msg.createRoom('TestRoom1','testadmin')
+    
+    if not n:
+        result['Notes'] = 'Empty Response'
+        return result
+    
+    # The client should have given us two passwords
+    if len(n) < 2:
+        result['Notes'] = 'Response too small'
+        return result
+    
+    # Seperate out the return value
+    roompass = n[0]
+    userpass = n[1] # user specific password    
+
+    STORAGE['room'] = {"name":"TestRoom1",
+                       "RoomPass":roompass,
+                       "UserPass":userpass,
+                       'User':'testadmin'
+                       }
+    
+    # Check the DB to ensure the room was actually created
+    CURSOR.execute("SELECT * from rooms where name=?",('TestRoom1',))
+    r = CURSOR.fetchone()
+    
+    if not r:
+        result['Notes'] = 'Room not in DB'
+        return result
+    
+    result['Result'] = 'Pass'
+    return [result,True]
+
+
+
+
+def test_two(msg):
+    ''' Try joining the previously created room with invalid credentials
+    '''
+    
+    result = {'Test' : 'Join the room with invalid creds','Result' : 'FAIL', 'Notes': '' }
+    n = msg.joinRoom(STORAGE['room']['User'],STORAGE['room']['name'],
+                     "%s:%s" % (STORAGE['room']['RoomPass'],'BlatantlyWrong'))
+    
+    if n:
+        result['Notes'] = 'Allowed to join with invalid pass'
+        return [result,False]
+    
+    
+    # Now try with an invalid username
+    result = {'Test' : 'Join the room with invalid creds','Result' : 'FAIL', 'Notes': '' }
+    n = msg.joinRoom('AlsoWrong',STORAGE['room']['name'],"%s:%s" % (STORAGE['room']['RoomPass'],'BlatantlyWrong'))
+    
+    if n:
+        result['Notes'] = 'Invalid user Allowed to join'
+        return [result,False]
+        
+    result['Result'] = 'Pass'
+    return [result,'False']
+
+
+
+
+def test_three(msg):
+    ''' Join the previously created room
+    '''
+    
+    result = {'Test' : 'Join the room','Result' : 'FAIL', 'Notes': '' }
+    n = msg.joinRoom(STORAGE['room']['User'],STORAGE['room']['name'],
+                     "%s:%s" % (STORAGE['room']['RoomPass'],STORAGE['room']['UserPass'])
+                     )
+    
+    if not n:
+        result['Notes'] = 'Could not join'
+        return [result,True]
+    
+    # Check the DB to ensure we're now active
+    CURSOR.execute("SELECT * from users where username=? and active=1",(STORAGE['room']['User'],))
+    r = CURSOR.fetchone()
+    
+    if not r:
+        result['Notes'] = 'Not Active in DB'
+        return [result,True]
+    
+    # Check we've got a session token
+    if not msg.sesskey:
+        result['Notes'] = 'No Session Key'
+        return [result,True]
+        
+    # Check the client has recorded what it needs to
+    if not msg.room:
+        result['Notes'] = 'Client forgot room'
+        return [result,True]
+
+    if not msg.user:
+        result['Notes'] = 'Client forgot user'
+        return [result,True]
+
+    if not msg.roompass:
+        result['Notes'] = 'Client forgot roompass'
+        return [result,True]
+
+    if not msg.syskey:
+        result['Notes'] = 'No SYSTEM key'
+        return [result,True]
+    
+    
+    result['Result'] = 'Pass'
+    return [result,True]
+
+
+
+
+
+
 if __name__ == '__main__':
     # Start the server
     proc1 = restartServer(False)
@@ -73,6 +275,23 @@ if __name__ == '__main__':
         # abort, abort, abort
         exit(proc1,1)
 
-    time.sleep(10)
+    
+    
+    CONN = sqlite3.connect(DB_FILE)
+    CURSOR = CONN.cursor()
+    
+    try:
+        # I don't like generic catchall exceptions
+        # but, we want to make sure we kill the background
+        # process if there is one.
+        results = run_tests()
+    except Exception as e:
+        print traceback.format_exc()
+        print e
+        exit(proc1,1)
+    
+    cols = ['Test','Result','Notes']
+    print make_table(cols,results)
+    
     exit(proc1,0)
     
