@@ -142,7 +142,8 @@ def run_tests():
     
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
-             'test_five','test_six','test_seven','test_eight']
+             'test_five','test_six','test_seven','test_eight',
+             'test_nine']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -504,11 +505,62 @@ def test_eight(msg):
     r = received[0][1].split('>')
     m = r[1].lstrip()
     if testpayload != m:
-        result['Notes'] = 'Incorrect message received: (%s)v(%s)' % (testpayload,received[0][1])
+        result['Notes'] = 'Incorrect message received: (%s)v(%s)' % (testpayload,m)
         return [result,isFatal]
         
     result['Result'] = 'Pass'
     return [result,isFatal]
+
+
+
+def test_nine(msg):
+    ''' Try to maliciously invite SYSTEM (as a precursor to logging in as them)
+    
+    Essentially a regression test for LOC-5
+    
+    '''
+    
+    result = {'Test' : 'LOC-5 Try to invite SYSTEM','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+        
+    # Poll for messages to clear the queue
+    f = msg.pollForMessage()
+    
+    # Now have the test user try to invite SYSTEM
+    n = STORAGE['testuser']['clientInstance'].inviteUser('SYSTEM')
+    if n:
+        result['Notes'] = 'Allowed to invite SYSTEM'
+        return [result,isFatal]
+    
+    # Now call pollMsg as admin to ensure we received the warning message
+    received = msg.pollForMessage()
+
+    # Poll as testuser to clear the queue ready for future tests
+    f = STORAGE['testuser']['clientInstance'].pollForMessage()
+    
+    if len(received) < 1:
+        result['Notes'] = 'No warning message received'
+        return [result,isFatal]
+    
+    if len(received[0]) < 2:
+        result['Notes'] = 'Malformed message returned'
+        return [result,isFatal]
+        
+    # Now check the payload
+    #
+    # We need to trim out the timestamp etc
+    r = received[0][1].split('>')
+    m = r[1].lstrip()
+    
+    expected = "ALERT: User %s tried to invite SYSTEM" % (STORAGE['testuser']['User'],)
+
+    if expected != m:
+        result['Notes'] = 'Unexpected message received: %s' % (m)
+        return [result,isFatal]
+        
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+
 
     
 
