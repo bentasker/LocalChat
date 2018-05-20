@@ -132,14 +132,16 @@ def run_tests():
     
     test_results = []
     tests = ['test_one','test_two','test_three']
-    
+    x = 1
     for test in tests:
         print "Running %s " % (test,)
         stat,isFatal = globals()[test](msg)
+        stat['No'] = x
         test_results.append(stat)
         if isFatal and stat['Result'] == 'FAIL':
             break
 
+        x = x + 1
 
     return test_results
 
@@ -290,7 +292,7 @@ if __name__ == '__main__':
         print e
         exit(proc1,1)
     
-    cols = ['Test','Result','Notes']
+    cols = ['No','Test','Result','Notes']
     print make_table(cols,results)
     
     exit(proc1,0)
