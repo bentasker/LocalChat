@@ -154,17 +154,18 @@ def test_one(msg):
     '''
     
     result = {'Test' : 'Create a Room','Result' : 'FAIL', 'Notes': '' }
+    isFatal = True
     # Test 1 - create a room and check it's recorded in the DB
     n = msg.createRoom('TestRoom1','testadmin')
     
     if not n:
         result['Notes'] = 'Empty Response'
-        return result
+        return [result,isFatal]
     
     # The client should have given us two passwords
     if len(n) < 2:
         result['Notes'] = 'Response too small'
-        return result
+        return [result,isFatal]
     
     # Seperate out the return value
     roompass = n[0]
@@ -182,10 +183,10 @@ def test_one(msg):
     
     if not r:
         result['Notes'] = 'Room not in DB'
-        return result
+        return [result,isFatal]
     
     result['Result'] = 'Pass'
-    return [result,True]
+    return [result,isFatal]
 
 
 
@@ -195,12 +196,13 @@ def test_two(msg):
     '''
     
     result = {'Test' : 'Join the room with invalid creds','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
     n = msg.joinRoom(STORAGE['room']['User'],STORAGE['room']['name'],
                      "%s:%s" % (STORAGE['room']['RoomPass'],'BlatantlyWrong'))
     
     if n:
         result['Notes'] = 'Allowed to join with invalid pass'
-        return [result,False]
+        return [result,isFatal]
     
     
     # Now try with an invalid username
@@ -209,10 +211,10 @@ def test_two(msg):
     
     if n:
         result['Notes'] = 'Invalid user Allowed to join'
-        return [result,False]
+        return [result,isFatal]
         
     result['Result'] = 'Pass'
-    return [result,'False']
+    return [result,isFatal]
 
 
 
@@ -222,13 +224,14 @@ def test_three(msg):
     '''
     
     result = {'Test' : 'Join the room','Result' : 'FAIL', 'Notes': '' }
+    isFatal = True
     n = msg.joinRoom(STORAGE['room']['User'],STORAGE['room']['name'],
                      "%s:%s" % (STORAGE['room']['RoomPass'],STORAGE['room']['UserPass'])
                      )
     
     if not n:
         result['Notes'] = 'Could not join'
-        return [result,True]
+        return [result,isFatal]
     
     # Check the DB to ensure we're now active
     CURSOR.execute("SELECT * from users where username=? and active=1",(STORAGE['room']['User'],))
@@ -236,33 +239,33 @@ def test_three(msg):
     
     if not r:
         result['Notes'] = 'Not Active in DB'
-        return [result,True]
+        return [result,isFatal]
     
     # Check we've got a session token
     if not msg.sesskey:
         result['Notes'] = 'No Session Key'
-        return [result,True]
+        return [result,isFatal]
         
     # Check the client has recorded what it needs to
     if not msg.room:
         result['Notes'] = 'Client forgot room'
-        return [result,True]
+        return [result,isFatal]
 
     if not msg.user:
         result['Notes'] = 'Client forgot user'
-        return [result,True]
+        return [result,isFatal]
 
     if not msg.roompass:
         result['Notes'] = 'Client forgot roompass'
-        return [result,True]
+        return [result,isFatal]
 
     if not msg.syskey:
         result['Notes'] = 'No SYSTEM key'
-        return [result,True]
+        return [result,isFatal]
     
     
     result['Result'] = 'Pass'
-    return [result,True]
+    return [result,isFatal]
 
 
 def test_four(msg):
