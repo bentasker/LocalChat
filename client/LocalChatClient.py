@@ -161,7 +161,7 @@ class msgHandler(object):
 
         resp = self.sendRequest(request)        
         
-        if resp['status'] == "ok":
+        if "status" in resp and resp['status'] == "ok":
             return True
         
         return False
@@ -197,7 +197,7 @@ class msgHandler(object):
 
         resp = self.sendRequest(request)        
         
-        if resp['status'] == "ok":
+        if "status" in resp and resp['status'] == "ok":
             return True
         
         return False
