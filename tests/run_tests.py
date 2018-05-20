@@ -142,7 +142,7 @@ def run_tests():
     
     test_results = []
     tests = ['test_one','test_two','test_three','test_four',
-             'test_five','test_six']
+             'test_five','test_six','test_seven']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -407,11 +407,67 @@ def test_six(msg):
     STORAGE['testuser'] = {
         'room':n[0],
         'pass':"%s:%s" % (n[1],n[2]),
-        'user':n[3]
+        'User':n[3]
         }
     
     result['Result'] = "Pass"
     return [result,isFatal]
+
+
+
+def test_seven(msg):
+    ''' Have the previously invited user join from a new client instance
+    '''
+    result = {'Test' : 'Join as Invited User','Result' : 'FAIL', 'Notes': '' }
+    isFatal = True
+    
+    usermsg = getClientInstance();
+    n = usermsg.joinRoom(STORAGE['testuser']['User'],STORAGE['testuser']['room'],STORAGE['testuser']['pass'])
+    
+    if not n:
+        result['Notes'] = 'Could not join'
+        return [result,isFatal]
+    
+    STORAGE['testuser']['clientInstance'] = usermsg
+    
+    CONN,CURSOR = opendb()
+    
+    # Check the DB to ensure we're now active
+    CURSOR.execute("SELECT * from users where username=? and active=1",(STORAGE['testuser']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r:
+        result['Notes'] = 'Not Active in DB'
+        return [result,isFatal]
+    
+    # Check we've got a session token
+    if not msg.sesskey:
+        result['Notes'] = 'No Session Key'
+        return [result,isFatal]
+        
+    # Check the client has recorded what it needs to
+    if not msg.room:
+        result['Notes'] = 'Client forgot room'
+        return [result,isFatal]
+
+    if not msg.user:
+        result['Notes'] = 'Client forgot user'
+        return [result,isFatal]
+
+    if not msg.roompass:
+        result['Notes'] = 'Client forgot roompass'
+        return [result,isFatal]
+
+    if not msg.syskey:
+        result['Notes'] = 'No SYSTEM key'
+        return [result,isFatal]
+    
+    
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+
+
 
 
 if __name__ == '__main__':
