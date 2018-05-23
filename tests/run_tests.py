@@ -145,7 +145,7 @@ def run_tests():
     tests = ['test_one','test_two','test_three','test_four',
              'test_five','test_six','test_seven','test_eight',
              'test_nine','test_ten','test_eleven','test_twelve',
-             'test_thirteen','test_fourteen']
+             'test_thirteen','test_fourteen','test_fifteen']
     x = 1
     for test in tests:
         print "Running %s " % (test,)
@@ -781,8 +781,92 @@ def test_twelve(msg):
     return [result,isFatal]
 
 
-
 def test_thirteen(msg):
+    ''' Check that /leave works
+    
+    Essentially, we send a message, wait 240 seconds and then check if it's gone
+    
+    In testing mode, closure is after 3 mins, but we wait an extra minute to make sure the scheduler has run
+    
+    
+    '''
+    result = {'Test' : 'Leave a room','Result' : 'FAIL', 'Notes': '' }
+    isFatal = False
+    
+    newmsg = getClientInstance()
+
+    n = msg.inviteUser('testuser3')
+    if not n:
+        result['Notes'] = 'Could not invite testuser'
+        return [result,isFatal]
+    
+    if len(n) < 4:
+        result['Notes'] = 'Client returned too short response'
+        return [result,isFatal]
+        
+    # Otherwise, we've got details for a new user to be able to join
+    #
+    # Store them for a later test
+    
+    STORAGE['testuser3'] = {
+        'room':n[0],
+        'pass':"%s:%s" % (n[1],n[2]),
+        'User':n[3]
+        }
+
+    n = newmsg.joinRoom(STORAGE['testuser3']['User'],STORAGE['testuser3']['room'],STORAGE['testuser3']['pass'])
+    
+    if not n:
+        result['Notes'] = 'Could not join'
+        return [result,isFatal]
+    
+    STORAGE['testuser3']['clientInstance'] = newmsg
+    
+    CONN,CURSOR = opendb()
+    
+    # Check the DB to ensure They're now active
+    CURSOR.execute("SELECT * from users where username=? and active=1",(STORAGE['testuser3']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+    
+    if not r:
+        result['Notes'] = 'Not Active in DB'
+        return [result,isFatal]
+    
+
+
+    # Now have them leave the room and check they drop out of the DB
+    if not newmsg.leaveRoom():
+        result['Notes'] = 'API reported failure'
+        return [result,isFatal]
+
+
+
+    # They should no longer be in the DB
+    CONN,CURSOR = opendb()
+    
+    # Check the DB to ensure They're now active
+    CURSOR.execute("SELECT * from users where username=? and active=1",(STORAGE['testuser3']['User'],))
+    r = CURSOR.fetchone()
+    CONN.close()
+
+    if r:
+        result['Notes'] = 'We left but are still active in the DB'
+        return [result,isFatal]
+    
+    # Verify the client cleared it's stored info
+    if newmsg.room or newmsg.roompass:
+        result['Notes'] = 'Client still stores room info'
+        return [result,isFatal]
+        
+    
+    # Otherwise, we're good
+    result['Result'] = 'Pass'
+    return [result,isFatal]
+
+
+
+def test_fourteen(msg):
     ''' Check that message purging is actually happening
     
     Essentially, we send a message, wait 90 seconds and then check if it's gone
@@ -821,7 +905,8 @@ def test_thirteen(msg):
     return [result,isFatal]
 
 
-def test_fourteen(msg):
+
+def test_fifteen(msg):
     ''' Check that auto room closure happens
     
     Essentially, we send a message, wait 240 seconds and then check if it's gone
