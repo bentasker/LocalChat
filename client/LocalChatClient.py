@@ -18,18 +18,15 @@ import urllib2
 import ssl
 import string
 import random
-
+import sys
 import datetime as dt
 
 import gnupg
 
 
 
-# We'll get these from the commandline later
-USER='ben2'
+# This can be changed from the commandline
 SERVER='https://127.0.0.1:8090'
-ROOMNAME='BenTest'
-
 
 class msgHandler(object):
     
@@ -796,8 +793,21 @@ You can also asynchronously output messages with Commander.output('message') """
         
 
 
+def handle_cmdline_opts(argv):
+    ''' Process  any commandline options
+    '''
+    
+    if argv[-1][0:2] == 'ht':
+        SERVER=argv[-1]
+        
+    
+    
     
 if __name__=='__main__':
+    
+    
+    if len(sys.argv) > 1:
+        handle_cmdline_opts(sys.argv)
     
     
     msg = msgHandler()
