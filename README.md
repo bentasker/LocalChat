@@ -2,13 +2,33 @@
 
 
 ## About
-`TODO`
+
+Localchat is a simple and lightweight chat application. It's primary purpose is to provide a means to have a multi-user Off-The-Record transient chat, minimising the likelihood that anyone but the chat participants has even a record that the chat took place.
+
+It is not designed to be exposed to the internet at large. Instead, the primary intended means of use is to deploy it onto a new system (such as an EC2 instance), have user's SSH tunnel in (or use other supported methods) to use it and then discard the system once that chat has completed.
+
+In other words, it's not designed as a generic chat application, but as one to be used for clandestine chats that are hard to monitor/intercept.
+
+The provided client uses basic End To End encryption (currently using PGP as the encryption mechanism), and the server holds encrypted payloads in memory only (to ensure the ciphertext doesn't end up captured on the hosting provider's SAN for a time). Message payloads are purged after a short interval to help reduce the potential exposure were someone to be monitoring the server's memory.
+
+The default behaviour is a Multi-User Chat (MUC), however direct messaging between participants within a room is also supported.
+
+
+
 
 
 
 ## Dependancies
 
+### Server
+
 `TODO`
+
+
+### Client
+
+`TODO`
+
 
 
 
