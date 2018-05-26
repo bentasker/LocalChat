@@ -38,6 +38,7 @@ class msgHandler(object):
         self.roompass = False
         self.sesskey = False
         self.syskey = False
+        self.verifycert = False
         self.gpg = gnupg.GPG()
     
     
@@ -383,12 +384,12 @@ class msgHandler(object):
         data = json.dumps(data)
         
         try:
-            # The cert the other end will be considered invalid
-            #
-            # Ignore it
-            ctx = ssl.create_default_context()
-            ctx.check_hostname = False
-            ctx.verify_mode = ssl.CERT_NONE
+            
+            ctx = ssl.create_default_context()            
+            
+            if not self.verifycert:
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
 
             req = urllib2.Request(self.server, data, {'Content-Type': 'application/json'})
             f = urllib2.urlopen(req,context=ctx)
@@ -793,24 +794,25 @@ You can also asynchronously output messages with Commander.output('message') """
         
 
 
-def handle_cmdline_opts(argv):
+def handle_cmdline_opts(argv,msg):
     ''' Process  any commandline options
     '''
     
     if argv[-1][0:2] == 'ht':
         SERVER=argv[-1]
         
-    
-    
+    if "--verify" in argv:
+        msg.verifycert = True
+
+    return msg
+
     
 if __name__=='__main__':
-    
+        
+    msg = msgHandler()
     
     if len(sys.argv) > 1:
-        handle_cmdline_opts(sys.argv)
-    
-    
-    msg = msgHandler()
+        msg = handle_cmdline_opts(sys.argv,msg)
     
     
     class TestCmd(Command):
