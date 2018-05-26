@@ -799,7 +799,7 @@ def handle_cmdline_opts(argv,msg):
     '''
     
     if argv[-1][0:2] == 'ht':
-        SERVER=argv[-1]
+        msg.server=argv[-1]
         
     if "--verify" in argv:
         msg.verifycert = True
