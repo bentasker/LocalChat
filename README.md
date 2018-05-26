@@ -1,15 +1,14 @@
 # LocalChat
 
 
+## About
+`TODO`
 
 
 
+## Dependancies
 
-
-
-
-
-
+`TODO`
 
 
 
@@ -112,6 +111,15 @@ Assuming `example.com` serves a publicly signed and trusted certificate (you'd h
     ./client/LocalChatClient.py --verify https://example.com/SM9vbtNrnZ0d6WQa1ByLjZEX/
  
 Later versions will implement the ability to include auth headers in the request so that you can 404 unauthorised requests to the 'hidden' path. Until then, unless there's a particularly strong reason not to, the SSH methods described above are the recommended routes of access.
+
+
+
+
+## Copyright
+
+LocalChat is Copyright (C) 2018 B Tasker. All Rights Reserved. 
+
+Released Under GNU GPL V2 License, see LICENSE.
 
 
 
