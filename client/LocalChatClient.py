@@ -459,7 +459,7 @@ class Command(object):
 similar to cmd.Cmd in standard library
 just extend with do_something  method to handle your commands"""
 
-    def __init__(self,quit_commands=['q','quit','exit'], help_commands=['help','?', 'h']):
+    def __init__(self,quit_commands=['/q','/quit','/exit'], help_commands=['/help','/?', '/h']):
         self._quit_cmd=quit_commands
         self._help_cmd=help_commands
         
@@ -594,11 +594,15 @@ just extend with do_something  method to handle your commands"""
                     c.output('To join the room, they should do /join %s %s:%s %s' %(n[0],n[1],n[2],n[3]))
                     return                                        
                     
+            if cmd in ["help",'h','?']:
+                return self.help(args[0] if args else None)
+            
+            if cmd in ["exit",'q','quit']:
+                return Commander.Exit
+            
 
         if cmd in self._quit_cmd:
             return Commander.Exit
-        elif cmd in self._help_cmd:
-            return self.help(args[0] if args else None)
         elif hasattr(self, 'do_'+cmd):
             return getattr(self, 'do_'+cmd)(*args)
         else:
@@ -614,6 +618,9 @@ just extend with do_something  method to handle your commands"""
             hc ='|'.join(self._help_cmd)
             res='Type [%s] to quit program\n' % qc
             res += """Available commands: 
+
+            /h                                                          Print this help text
+
             
             /join [room] [password] [username]                          Join a room
             /leave                                                      Leave current room
@@ -622,6 +629,7 @@ just extend with do_something  method to handle your commands"""
             
             /room invite [user]                                         Invite a user into the current room
             /me [string]                                                Send an 'action' instead of a message
+            /msg [user] message                                         Send a direct message to [user]
             
             Room Admin commands:
             

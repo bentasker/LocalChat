@@ -21,6 +21,28 @@ The default behaviour is a Multi-User Chat (MUC), however direct messaging betwe
 
 ## Usage Instructions
 
-`TODO`
+Commands are IRC like:
+
+            /help                                                       Print Usage information
+
+            /join [room] [password] [username]                          Join a room
+            /leave                                                      Leave current room
+            /room create [roomname] [roompass] [admin user]             New room management
+
+
+            /room invite [user]                                         Invite a user into the current room
+            /me [string]                                                Send an 'action' instead of a message
+            /msg [user] message                                         Send a direct message to [user]
+
+            Room Admin commands:
+
+            /kick [user]                                                Kick a user out of the room (they can return)
+            /ban [user]                                                 Kick a user out and disinvite them (they cannot return)
+            /room close [roompass]                                      Kick all users out and close the room
+
+
+            /exit                                                       Quit the client
+
+
 
 
