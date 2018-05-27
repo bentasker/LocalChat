@@ -31,6 +31,50 @@ Supported Actions
 -------------------
 
 
+### banUser
+
+Can only be called by the room admin, kicks a user out of the room, and does not allow them to return (unless re-invited)
+
+    {
+        "action":"banUser",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "kick": [user to kick],
+                    "sesskey": sessionkey
+        }
+    }
+
+*Response*
+
+If successful, the value of `status` will be `ok` and the kicked user's session will be terminated and their user record removed. A message will be pushed to the room by `SYSTEM` to note that that user has been kicked and banned.
+
+If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a message to warn that `user` tried to ban `tokick`.
+
+
+
+### closeRoom
+
+This can only be successfully called by the room's owner. `closeRoom` will close the current room, remove all associated messages, sessions and user accounts.
+
+
+    {
+        "action":"closeRoom",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "sesskey": sessionkey
+        }
+    }
+
+*Response*
+
+If successful, the value of `status` will be `ok`.
+
+Rooms should always be closed when they are no longer required. The server will (by default) automatically close inactive rooms after a period, but this is intended as a safety net (in case the admin gets disconnected and cannot reconnect for some reason).
+
+
+
 ### createRoom
 
 This is used to create a room. Calls are currently unauthenticated because user accounts are tied to a room rather than existing in a global namespace (this is done to limit the risk of a list of possible users sitting on the server until they're likely to be needed).
@@ -52,6 +96,29 @@ When creating a room, we specify the username of the user who will be the room o
 If the room is successfully created, the value of `status` will be `ok`. The roomname will also be confirmed back as the attribute `name`.
 
 The user will then need to call `joinRoom` in order to enter the room (the client could do this automatically, but the current client version does not).
+
+
+
+### inviteUser
+
+Used to invite a user into the current room. Can be called by admin's and users alike (`SYSTEM` will push a message into the room to notify others of the invite)
+
+    {
+        "action":"inviteUser",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "invite": [user to invite],
+                    "pass": [new users pass]
+                    "sesskey": sessionkey
+        }
+    }
+
+When inviting a user, we need to specify their username as `invite` and their authentication password as `pass`
+
+*Response*
+
+If successful, the value of `status` will be `ok`. `SYSTEM` will also push a message into the room that `user` invited `invite`
 
 
 
@@ -89,75 +156,6 @@ The value `syskey` is a decryption passphrase. The server's internal user `SYSTE
 
 
 
-### closeRoom
-
-This can only be successfully called by the room's owner. `closeRoom` will close the current room, remove all associated messages, sessions and user accounts.
-
-
-    {
-        "action":"closeRoom",
-        "payload": {    
-                    "roomName": "[name of room]",
-                    "user": user,
-                    "sesskey": sessionkey
-        }
-    }
-
-*Response*
-
-If successful, the value of `status` will be `ok`.
-
-Rooms should always be closed when they are no longer required. The server will (by default) automatically close inactive rooms after a period, but this is intended as a safety net (in case the admin gets disconnected and cannot reconnect for some reason).
-
-
-
-### inviteUser
-
-Used to invite a user into the current room. Can be called by admin's and users alike (`SYSTEM` will push a message into the room to notify others of the invite)
-
-    {
-        "action":"inviteUser",
-        "payload": {    
-                    "roomName": "[name of room]",
-                    "user": user,
-                    "invite": [user to invite],
-                    "pass": [new users pass]
-                    "sesskey": sessionkey
-        }
-    }
-
-When inviting a user, we need to specify their username as `invite` and their authentication password as `pass`
-
-*Response*
-
-If successful, the value of `status` will be `ok`. `SYSTEM` will also push a message into the room that `user` invited `invite`
-
-
-
-### banUser
-
-Can only be called by the room admin, kicks a user out of the room, and does not allow them to return (unless re-invited)
-
-    {
-        "action":"banUser",
-        "payload": {    
-                    "roomName": "[name of room]",
-                    "user": user,
-                    "kick": [user to kick],
-                    "sesskey": sessionkey
-        }
-    }
-
-*Response*
-
-If successful, the value of `status` will be `ok` and the kicked user's session will be terminated and their user record removed. A message will be pushed to the room by `SYSTEM` to note that that user has been kicked and banned.
-
-If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a message to warn that `user` tried to ban `tokick`.
-
-
-
-
-
 ### kickUser
 
 Can only be called by the room admin, kicks a user out of the room (but allows them to return). Useful where you think a user's session has hung (for example)
@@ -180,8 +178,6 @@ If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a
 
 
 
-
-
 ### leaveRoom
 
 Used to leave the current room
@@ -200,7 +196,6 @@ Used to leave the current room
 If successful, the value of `status` will be `ok`. Client's should then disable any automated message polling they are running.
 
 
-    
 
 ### pollMsg
 
@@ -239,6 +234,41 @@ Once the client has processed the received messages, the value of `last` in the 
 
 
 
+### sendDirectMsg
+
+Used to send a message to a specific user within the room. The message will not be visible to other room occupants.
+
+    {
+        "action":"sendDirectMsg",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "msg": "[message payload]",
+                    "to": recipient
+                    "user": user,
+                    "sesskey": sessionkey
+        }
+    }
+
+The message payload is encrypted and base64 encoded by the client, so the server only sees a base64 string. 
+
+However, to keep compatability with the supplied client, your message payload (prior to encryption) should be a JSON encapsulated string of the format
+
+        msg = {
+            'user': user,
+            'text': msg,
+            "verb": verb
+            }
+
+This should then be PGP encrypted using the room passphrase, and then base64 encoded for embedding into the API payload.
+            
+Where `verb` is one of `do` or `say` (other values will be treated as `say` by the supplied client).
+
+
+*Response*
+
+If message sending is successful, the response will contain `status:"ok"`
+
+
 
 ### sendMsg
 
@@ -274,41 +304,6 @@ Where `verb` is one of `do` or `say` (other values will be treated as `say` by t
 If message sending is successful, the response will contain `status:"ok"`
 
 
-
-
-### sendDirectMsg
-
-Used to send a message to a specific user within the room. The message will not be visible to other room occupants.
-
-    {
-        "action":"sendDirectMsg",
-        "payload": {    
-                    "roomName": "[name of room]",
-                    "msg": "[message payload]",
-                    "to": recipient
-                    "user": user,
-                    "sesskey": sessionkey
-        }
-    }
-
-The message payload is encrypted and base64 encoded by the client, so the server only sees a base64 string. 
-
-However, to keep compatability with the supplied client, your message payload (prior to encryption) should be a JSON encapsulated string of the format
-
-        msg = {
-            'user': user,
-            'text': msg,
-            "verb": verb
-            }
-
-This should then be PGP encrypted using the room passphrase, and then base64 encoded for embedding into the API payload.
-            
-Where `verb` is one of `do` or `say` (other values will be treated as `say` by the supplied client).
-
-
-*Response*
-
-If message sending is successful, the response will contain `status:"ok"`
 
 
 
