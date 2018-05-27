@@ -22,12 +22,12 @@ The default behaviour is a Multi-User Chat (MUC), however direct messaging betwe
 
 ### Server
 
-`TODO`
+See [server/README.md](server/README.md)
 
 
 ### Client
 
-`TODO`
+See [client/README.md](client/README.md)
 
 
 
