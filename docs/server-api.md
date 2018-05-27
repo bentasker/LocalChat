@@ -31,8 +31,43 @@ Supported Actions
 -------------------
 
 
+### joinRoom
 
-### PollMsg
+Used to enter a room.
+
+When the user was invited to the room, a password will have been set for them (the supplied client currently auto-generates that password), it will need to be provided for the user to authenticate.
+
+    {
+        "action":"joinRoom",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "userpass": password,
+                    "user": user
+        }
+    }
+
+*Response*
+
+If authentication is successful, the response will include a number of details that the client will need to take note of for future requests
+
+    {
+        "status": "ok",
+        "last": last,
+        "session": sessionkey,
+        "syskey": systemkey
+    }
+    
+The value `last` is the ID of the latest message in the room you've just joined. It should be included in `pollMsg` calls.
+
+The value `sessionkey` is a server generated sessionkey. It must be included in the payload of all future requests (it's used to help authenticate those requests).
+
+The value `syskey` is a decryption passphrase. The server's internal user `SYSTEM` will E2E encrypt any messages it pushes into rooms, this is the key you should use to decrypt those messages.
+
+
+
+
+
+### pollMsg
 
 Used to check whether there are any messages since the last the client received. It will return room-wide messages and direct messages addressed to the polling user.
 
