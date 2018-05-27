@@ -99,7 +99,12 @@ This should then be PGP encrypted using the room passphrase, and then base64 enc
 Where `verb` is one of `do` or `say` (other values will be treated as `say` by the supplied client).
 
 
+*Response*
+
 If message sending is successful, the response will contain `status:"ok"`
+
+
+
 
 
 
