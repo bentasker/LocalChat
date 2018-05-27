@@ -133,8 +133,54 @@ When inviting a user, we need to specify their username as `invite` and their au
 If successful, the value of `status` will be `ok`. `SYSTEM` will also push a message into the room that `user` invited `invite`
 
 
-    
-    
+
+### banUser
+
+Can only be called by the room admin, kicks a user out of the room, and does not allow them to return (unless re-invited)
+
+    {
+        "action":"banUser",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "kick": [user to kick],
+                    "sesskey": sessionkey
+        }
+    }
+
+*Response*
+
+If successful, the value of `status` will be `ok` and the kicked user's session will be terminated and their user record removed. A message will be pushed to the room by `SYSTEM` to note that that user has been kicked and banned.
+
+If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a message to warn that `user` tried to ban `tokick`.
+
+
+
+
+
+### kickUser
+
+Can only be called by the room admin, kicks a user out of the room (but allows them to return). Useful where you think a user's session has hung (for example)
+
+    {
+        "action":"kickUser",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "kick": [user to kick],
+                    "sesskey": sessionkey
+        }
+    }
+
+*Response*
+
+If successful, the value of `status` will be `ok` and the kicked user's session will be terminated. A message will be pushed to the room by `SYSTEM` to note that that user has been kicked.
+
+If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a message to warn that `user` tried to kick `tokick`.
+
+
+
+
 
 ### leaveRoom
 
