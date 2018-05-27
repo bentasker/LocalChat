@@ -66,6 +66,25 @@ The value `syskey` is a decryption passphrase. The server's internal user `SYSTE
 
 
 
+### leaveRoom
+
+Used to leave the current room
+
+    {
+        "action":"leaveRoom",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "sesskey": sessionkey
+        }
+    }
+
+*Response*
+
+If successful, the value of `status` will be `ok`. Client's should then disable any automated message polling they are running.
+
+
+    
 
 ### pollMsg
 
