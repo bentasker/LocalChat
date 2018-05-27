@@ -61,7 +61,7 @@ If successful, the value of `status` will be `ok` and the kicked user's session 
 
 If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a message to warn that `user` tried to ban `tokick`.
 
-
+----
 
 ### closeRoom
 
@@ -83,7 +83,7 @@ If successful, the value of `status` will be `ok`.
 
 Rooms should always be closed when they are no longer required. The server will (by default) automatically close inactive rooms after a period, but this is intended as a safety net (in case the admin gets disconnected and cannot reconnect for some reason).
 
-
+----
 
 ### createRoom
 
@@ -107,7 +107,7 @@ If the room is successfully created, the value of `status` will be `ok`. The roo
 
 The user will then need to call `joinRoom` in order to enter the room (the client could do this automatically, but the current client version does not).
 
-
+----
 
 ### inviteUser
 
@@ -130,7 +130,7 @@ When inviting a user, we need to specify their username as `invite` and their au
 
 If successful, the value of `status` will be `ok`. `SYSTEM` will also push a message into the room that `user` invited `invite`
 
-
+----
 
 ### joinRoom
 
@@ -164,7 +164,7 @@ The value `sessionkey` is a server generated sessionkey. It must be included in 
 
 The value `syskey` is a decryption passphrase. The server's internal user `SYSTEM` will E2E encrypt any messages it pushes into rooms, this is the key you should use to decrypt those messages.
 
-
+----
 
 ### kickUser
 
@@ -186,7 +186,7 @@ If successful, the value of `status` will be `ok` and the kicked user's session 
 
 If the requesting user lacks the privileges to kick a user, `SYSTEM` will push a message to warn that `user` tried to kick `tokick`.
 
-
+----
 
 ### leaveRoom
 
@@ -205,7 +205,7 @@ Used to leave the current room
 
 If successful, the value of `status` will be `ok`. Client's should then disable any automated message polling they are running.
 
-
+----
 
 ### pollMsg
 
@@ -242,7 +242,7 @@ If status is `updated` then messages have been returned:
 
 Once the client has processed the received messages, the value of `last` in the next `pollMsg` request should be the maximum ID in the resultset.
 
-
+----
 
 ### sendDirectMsg
 
@@ -278,7 +278,7 @@ Where `verb` is one of `do` or `say` (other values will be treated as `say` by t
 
 If message sending is successful, the response will contain `status:"ok"`
 
-
+----
 
 ### sendMsg
 
@@ -314,6 +314,7 @@ Where `verb` is one of `do` or `say` (other values will be treated as `say` by t
 If message sending is successful, the response will contain `status:"ok"`
 
 
+----
 
 
 
