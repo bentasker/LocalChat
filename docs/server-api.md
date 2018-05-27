@@ -70,3 +70,39 @@ Once the client has processed the received messages, the value of `last` in the 
 
 
 
+### sendMsg
+
+Used to send a message to the entire room
+
+    {
+        "action":"sendMsg",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "msg": "[message payload]",
+                    "user": user,
+                    "sesskey": sessionkey
+        }
+    }
+
+The message payload is encrypted and base64 encoded by the client, so the server only sees a base64 string. 
+
+However, to keep compatability with the supplied client, your message payload (prior to encryption) should be a JSON encapsulated string of the format
+
+        msg = {
+            'user': user,
+            'text': msg,
+            "verb": verb
+            }
+
+This should then be PGP encrypted using the room passphrase, and then base64 encoded for embedding into the API payload.
+            
+Where `verb` is one of `do` or `say` (other values will be treated as `say` by the supplied client).
+
+
+If message sending is successful, the response will contain `status:"ok"`
+
+
+
+
+    
+    
