@@ -26,6 +26,16 @@ The following HTTP statuses may be returned
 
 
 
+Authentication
+---------------
+
+Authentication is performed on a per-room basis, so certain calls (such as `createRoom`) are currently entirely unauthenticated (a form of auth may be introduced for those later).
+
+User's are required to authenticate themselves (via password) when they attempt to enter a room with a `joinRoom` call. If that call is successful then a session key will be provided in the response. This must be embedded into every payload (as attribute `sesskey`) after that.
+
+The server uses `bcrypt` for storing authentication credentials.
+
+
 
 Supported Actions
 -------------------
