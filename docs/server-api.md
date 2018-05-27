@@ -30,4 +30,43 @@ The following HTTP statuses may be returned
 Supported Actions
 -------------------
 
-`TODO`
+
+
+### PollMsg
+
+Used to check whether there are any messages since the last the client received. It will return room-wide messages and direct messages addressed to the polling user.
+
+Client provides the ID of the last message they've received, as well as the room they're polling. Where this is the first request, `last` should be 0
+
+    {
+        "action":"pollMsg",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "mylast": "[last]",
+                    "user": user,
+                    "sesskey": sessionkey
+        }
+    }
+
+
+*Response*
+
+If there are no messages, then the response status will be `unchanged`.
+If a specific error is being returned, the response status will be `errmessage` - you should disable any automatic polling and the print the content of `text`
+
+If status is `updated` then messages have been returned:
+
+    {
+        "status": "updated",
+        "messages" : [
+                        [msgid,msgtext,timestamp,fromuser,touser],
+                        [msgid,msgtext,timestamp,fromuser,touser]    
+        ]
+
+    }
+
+Once the client has processed the received messages, the value of `last` in the next `pollMsg` request should be the maximum ID in the resultset.
+
+
+
+
