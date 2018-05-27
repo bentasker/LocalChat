@@ -45,4 +45,16 @@ Commands are IRC like:
 
 
 
+## Commandline Arguments
 
+The client takes a limited number of commandline arguments. By default, none are needed, but depending on your deployment methodology, some of the following may be required.
+
+
+    ./LocalChatClient.py [--verify] [server]
+    
+
+When `--verify` is present, SSL certificate verification will be enabled (which means the server must present a certificate trusted by your system and valid for the server's address. By default that's not the case).
+
+If specified, `server` should be the last argument and must be of the format `https://[servername/ip[:port]]/[path]` (port is optional, default is `8090`).
+
+See the main [README](../README.md) for examples of deployments where these flags may be required.
