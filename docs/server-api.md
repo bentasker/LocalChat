@@ -31,6 +31,30 @@ Supported Actions
 -------------------
 
 
+### createRoom
+
+This is used to create a room. Calls are currently unauthenticated because user accounts are tied to a room rather than existing in a global namespace (this is done to limit the risk of a list of possible users sitting on the server until they're likely to be needed).
+
+    {
+        "action":"createRoom",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "owner": [name of user],
+                    "pass": password
+        }
+    }
+
+When creating a room, we specify the username of the user who will be the room owner/admin, and the password they will use to join the room. In the background this will set up the requisite user account.
+
+
+*Response*
+
+If the room is successfully created, the value of `status` will be `ok`. The roomname will also be confirmed back as the attribute `name`.
+
+The user will then need to call `joinRoom` in order to enter the room (the client could do this automatically, but the current client version does not).
+
+
+
 ### joinRoom
 
 Used to enter a room.
@@ -62,6 +86,27 @@ The value `last` is the ID of the latest message in the room you've just joined.
 The value `sessionkey` is a server generated sessionkey. It must be included in the payload of all future requests (it's used to help authenticate those requests).
 
 The value `syskey` is a decryption passphrase. The server's internal user `SYSTEM` will E2E encrypt any messages it pushes into rooms, this is the key you should use to decrypt those messages.
+
+
+### closeRoom
+
+This can only be successfully called by the room's owner. `closeRoom` will close the current room, remove all associated messages, sessions and user accounts.
+
+
+    {
+        "action":"closeRoom",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "sesskey": sessionkey
+        }
+    }
+
+*Response*
+
+If successful, the value of `status` will be `ok`.
+
+Rooms should always be closed when they are no longer required. The server will (by default) automatically close inactive rooms after a period, but this is intended as a safety net (in case the admin gets disconnected and cannot reconnect for some reason).
 
 
 
