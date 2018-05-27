@@ -88,6 +88,7 @@ The value `sessionkey` is a server generated sessionkey. It must be included in 
 The value `syskey` is a decryption passphrase. The server's internal user `SYSTEM` will E2E encrypt any messages it pushes into rooms, this is the key you should use to decrypt those messages.
 
 
+
 ### closeRoom
 
 This can only be successfully called by the room's owner. `closeRoom` will close the current room, remove all associated messages, sessions and user accounts.
@@ -110,6 +111,30 @@ Rooms should always be closed when they are no longer required. The server will 
 
 
 
+### inviteUser
+
+Used to invite a user into the current room. Can be called by admin's and users alike (`SYSTEM` will push a message into the room to notify others of the invite)
+
+    {
+        "action":"inviteUser",
+        "payload": {    
+                    "roomName": "[name of room]",
+                    "user": user,
+                    "invite": [user to invite],
+                    "pass": [new users pass]
+                    "sesskey": sessionkey
+        }
+    }
+
+When inviting a user, we need to specify their username as `invite` and their authentication password as `pass`
+
+*Response*
+
+If successful, the value of `status` will be `ok`. `SYSTEM` will also push a message into the room that `user` invited `invite`
+
+
+    
+    
 
 ### leaveRoom
 
