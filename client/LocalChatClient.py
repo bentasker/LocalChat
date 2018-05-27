@@ -459,7 +459,7 @@ class Command(object):
 similar to cmd.Cmd in standard library
 just extend with do_something  method to handle your commands"""
 
-    def __init__(self,quit_commands=['/q','/quit','/exit'], help_commands=['/help','/?', '/h']):
+    def __init__(self,quit_commands=['q','quit','exit'], help_commands=['help','?', 'h']):
         self._quit_cmd=quit_commands
         self._help_cmd=help_commands
         
@@ -628,11 +628,6 @@ just extend with do_something  method to handle your commands"""
             /kick [user]                                                Kick a user out of the room (they can return)
             /ban [user]                                                 Kick a user out and disinvite them (they cannot return)
             /room close [roompass]                                      Kick all users out and close the room
-            
-            
-            
-            /help                                                       Print this info
-            /exit                                                       Exit the client
             
             Once in a room, to send a message, just type it.
             
