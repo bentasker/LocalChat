@@ -14,8 +14,13 @@ The default behaviour is a Multi-User Chat (MUC), however direct messaging betwe
 
 ## Dependancies
 
+The following Python modules are required (other client dependancies should all already be present so long as you have python installed)
 
-`TODO`
+* urllib2
+* urwid
+* gnupg
+
+
 
 
 
