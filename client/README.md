@@ -58,3 +58,23 @@ When `--verify` is present, SSL certificate verification will be enabled (which 
 If specified, `server` should be the last argument and must be of the format `https://[servername/ip[:port]]/[path]` (port is optional, default is `8090`).
 
 See the main [README](../README.md) for examples of deployments where these flags may be required.
+
+
+
+
+## Client Message API
+
+To send and receive messages, the client uses the [Server API](../docs/server-api.md), however, messages are contained within an encrypted payload that the server cannot see into. In order to be compatible with this client, message payloads need to be formed as a JSON encapsulated string with the following structure
+
+    {
+        "text":"[message text]",
+        "verb":[message verb]
+    }
+
+Message verbs were defined in [LOC-16](https://projects.bentasker.co.uk/jira_projects/browse/LOC-16.html). The default is `say` and any unrecognised verbs will be treated as such - an ordinary message. 
+
+The verb `do` will cause the client to print a `/me` message:
+
+            ** ben writes documentation **
+
+Once the JSON string has been generated, it should be PGP encrypted using the room key as a passphrase. The client uses Symmetric AES-256 encryption when encrypting, but will support decrypting anything that the Python PGP bindings support.
