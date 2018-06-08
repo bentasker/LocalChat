@@ -73,7 +73,6 @@ class MsgHandler(object):
             print "WARNING - Messages will be written to disk"
 
 
-
     def createDB(self):
         ''' Create the in-memory database ready for use 
         '''
@@ -139,7 +138,6 @@ class MsgHandler(object):
         thread.start_new_thread(taskScheduler,(self.cronpass,self.bindpoint))
 
 
-
     def processSubmission(self,reqjson):
         ''' Process an incoming request and route it to
         the correct function
@@ -197,17 +195,12 @@ class MsgHandler(object):
         elif reqjson['action'] == 'pollMsg':
             return self.fetchMsgs(reqjson)
          
-        
-        
-        
-        
 
     def decrypt(self,msg):
         ''' This is currently just a placeholder
         Will be updated later
         '''
         return msg
-
 
 
     def createRoom(self,reqjson):
@@ -267,7 +260,6 @@ class MsgHandler(object):
             }
         
 
-
     def closeRoom(self,reqjson):
         ''' Close a room.
         
@@ -305,10 +297,6 @@ class MsgHandler(object):
         self.conn.commit()
         
         return { "status" : "ok" }
-    
-        
-           
-        
 
 
     def inviteUser(self,reqjson):
@@ -345,8 +333,7 @@ class MsgHandler(object):
         return {
                 "status":'ok'
             }
-        
-    
+
     
     def kickUser(self,reqjson,ban=False):
         ''' Kick a user out of room
@@ -370,8 +357,6 @@ class MsgHandler(object):
         if not n:
             return self.returnFailure(403)
         
-        
-        
         self.cursor.execute("UPDATE users set active=0 where room=? and username=?",(room,reqjson["payload"]["kick"]))
         
         # Delete their session
@@ -388,9 +373,8 @@ class MsgHandler(object):
             self.pushSystemMsg("User %s banned %s from the room" % (reqjson['payload']['user'],reqjson['payload']['kick']),room,'syswarn')
             
         return { "status" : "ok" }
-    
 
-    
+
     def processjoinRoom(self,reqjson):
         ''' Process a request from a user to login to a room
         
@@ -403,12 +387,10 @@ class MsgHandler(object):
             if i not in reqjson['payload']:
                 return self.returnFailure(400)
                 
-        
         room = self.getRoomID(reqjson['payload']["roomName"])
         
         if not room:
             return self.returnFailure(400)
-        
         
         if reqjson["payload"]["user"] == "SYSTEM":
             return self.returnFailure(403)
@@ -420,12 +402,10 @@ class MsgHandler(object):
         if not r:
             return { "status": "NOK" }
         
-        
         # Now we need to verify they've supplied a correct password for that user
         stored = r[2].encode("utf-8")
         if stored != bcrypt.hashpw(reqjson['payload']['userpass'].encode('utf-8'),stored):
             return self.returnFailure(403)
-        
             
         # Tidy older messages away.
         #
@@ -435,15 +415,12 @@ class MsgHandler(object):
         # to scroll up and down in their client anyway
         self.tidyMsgs(time.time()-10,room)
         
-        
         # Push a message to the room to note that the user joined
         msgid = self.pushSystemMsg("User %s joined the room" % (reqjson['payload']['user']),room)
-
 
         # If we're in testing mode, push a warning so the new user can see it
         if self.testingMode:
             msgid = self.pushSystemMsg("Server is in testing mode. Messages are being written to disk",room,'syswarn')
-
 
         # Check the latest message ID for that room
         self.cursor.execute("SELECT id from messages WHERE room=? and id != ? ORDER BY id DESC",(room,msgid))
@@ -457,15 +434,14 @@ class MsgHandler(object):
         # Mark the user as active in the users table
         self.cursor.execute("UPDATE users set active=1 where username=? and room=?", (reqjson['payload']['user'],room))
         
-        
         # Create a session for the user
         sesskey = "%s-%s" % (reqjson['payload']["roomName"],self.genSessionKey())
         self.cursor.execute("INSERT INTO sessions (username,sesskey) values (?,?)", (reqjson['payload']['user'],sesskey))
         self.conn.commit()
                 
         return {"status":"ok","last":last,"session":sesskey,"syskey":self.syskey}
-        
-        
+
+
     def processleaveRoom(self,reqjson):
         ''' Process a user's request to leave a room
         '''
@@ -491,8 +467,8 @@ class MsgHandler(object):
         # Push a message to the room to note they left
         self.pushSystemMsg("User %s left the room" % (reqjson['payload']['user']),room)
         return {"status":"ok"}
-    
-    
+
+
     def sendMsg(self,reqjson):
         ''' Push a message into a room
         
@@ -503,7 +479,6 @@ class MsgHandler(object):
         if not self.validateUser(reqjson['payload']):
             return self.returnFailure(403)
         
-        
         if "roomName" not in reqjson['payload'] or "msg" not in reqjson['payload']:
             return self.returnFailure(400)
         
@@ -511,8 +486,7 @@ class MsgHandler(object):
         print room
         if not room:
             return self.returnFailure(400)
-
-            
+        
         self.cursor.execute("INSERT INTO messages (ts,room,msg,user) VALUES (?,?,?,?)",(time.time(),room,reqjson['payload']['msg'],reqjson['payload']['user']))
         msgid = self.cursor.lastrowid
         self.conn.commit()
@@ -526,7 +500,6 @@ class MsgHandler(object):
         else:
             last = r[0]
         
-        
         # Update the last activity field in the DB
         # See LOC-11
         self.cursor.execute("UPDATE rooms set lastactivity=? where id=?",(time.time(),room))
@@ -537,7 +510,6 @@ class MsgHandler(object):
                 "msgid" : msgid,
                 "last" : last
             }
-        
 
 
     def sendDirectMsg(self,reqjson):
@@ -587,10 +559,8 @@ class MsgHandler(object):
                 "msgid" : msgid,
                 "last" : last
             }
-        
 
 
-        
     def fetchMsgs(self,reqjson):
         ''' Check to see if there are any new messages in the room
         
@@ -605,7 +575,6 @@ class MsgHandler(object):
         print room
         if not room:
             return self.returnFailure(400)
-
 
         if not self.validateUser(reqjson['payload']):
             return self.returnFailure(403,reqjson['payload'],room)
@@ -627,18 +596,13 @@ class MsgHandler(object):
         return {"status":"updated",
                 "messages" : r
                 }
-    
-    
-        
-        
-        
-    
+
+
     def validateUser(self,payload):
         ''' Placeholder for now. Auth will be handled in more depth later
         '''
         if "user" not in payload or "roomName" not in payload:
             return False
-        
         
         # Validate the session information
         self.cursor.execute("SELECT username from sessions where username=? and sesskey=?",(payload['user'],payload['sesskey']))
@@ -647,12 +611,9 @@ class MsgHandler(object):
         if not r:
             return False
         
-        
         room = self.getRoomID(payload["roomName"])
         if not room:
             return False        
-        
-        
         
         # Check whether the user has been marked as active
         self.cursor.execute("SELECT username, room from users where username=? and room=? and active=1",(payload['user'],room))
@@ -664,7 +625,6 @@ class MsgHandler(object):
         return True
 
 
-    
     def getRoomID(self,roomname):
         ''' Get a room's ID from its name
         '''
@@ -676,7 +636,6 @@ class MsgHandler(object):
             return False
         
         return r[0]
-    
 
 
     def triggerClean(self,reqjson):
@@ -697,8 +656,7 @@ class MsgHandler(object):
         self.autoCloseRooms()
         
         return {'status':'ok'}
-        
-        
+
 
     def tidyMsgs(self,thresholdtime,room=False):
         ''' Remove messages older than the threshold time
@@ -717,8 +675,6 @@ class MsgHandler(object):
         self.cursor.execute("DELETE FROM failuremsgs  where expires < ?",(time.time(),))
 
 
-
-
     def autoCloseRooms(self):
         ''' Automatically close any rooms that have been sat idle for too long
         '''
@@ -734,10 +690,6 @@ class MsgHandler(object):
             self.cursor.execute("DELETE FROM sessions where sesskey like ?", (r[1] + '-%',))
             self.cursor.execute("DELETE FROM rooms where id=?",(r[0],))
             self.conn.commit()
-            
-            
-        
-
 
 
     def pushSystemMsg(self,msg,room,verb="sysinfo"):
@@ -769,8 +721,6 @@ class MsgHandler(object):
         '''
         self.cursor.execute("INSERT INTO failuremsgs (username,room,expires,msg) values (?,?,?,?)",(user,room,time.time() + 300,msg))
         self.conn.commit()
-        
-        
 
 
     def returnFailure(self,status,reqjson=False,room=False):
@@ -796,9 +746,7 @@ class MsgHandler(object):
             self.conn.commit()
             return {"status":"errmessage","text":r[0]}
         
-        
         return status
-        
 
 
     def encryptSysMsg(self,msg):
@@ -809,15 +757,13 @@ class MsgHandler(object):
             more info.
         
         '''
-        
+
         crypted = self.gpg.encrypt(msg,None,passphrase=self.syskey,symmetric="AES256",armor=False)
         return crypted.data.encode('base64')
-        
 
 
     def genSessionKey(self,N=48):
         return ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits + '/=?&@#%^()+,.<>:!').encode('utf-8') for _ in range(N))
-
 
 
     def genpassw(self,N=16):
@@ -827,10 +773,8 @@ class MsgHandler(object):
         return ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(N))
 
 
-
 # Create the scheduler function
 def taskScheduler(passw,bindpoint):
-    
     
     # Ignore cert errors
     ctx = ssl.create_default_context()
@@ -853,12 +797,8 @@ def taskScheduler(passw,bindpoint):
             # Don't let the thread abort just because one request went wrong
             continue
 
-    
-
 
 if __name__ == '__main__':
-    
-    # These will be handled properly later
     passw = ''.join(random.SystemRandom().choice(string.ascii_letters + string.digits).encode('utf-8') for _ in range(64))
     bindpoint = "https://127.0.0.1:8090" 
     purgeinterval = 600 # Wipe messages older than 10 mins
@@ -877,13 +817,8 @@ if __name__ == '__main__':
     # as well as the URL it should POST to
     msghandler = MsgHandler(passw,bindpoint,purgeinterval,closethresh,testingmode)
 
-
     # Bind to PORT if defined, otherwise default to 8090.
+    #
+    # This will likely become a CLI argument later
     port = int(os.environ.get('PORT', 8090))
-    app.run(host='0.0.0.0', port=port,debug=True,ssl_context='adhoc')
-
-
-
-
-
-
+    app.run(host='127.0.0.1', port=port,debug=True,ssl_context='adhoc')
