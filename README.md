@@ -14,6 +14,11 @@ The provided client uses basic End To End encryption (currently using PGP as the
 The default behaviour is a Multi-User Chat (MUC), however direct messaging between participants within a room is also supported.
 
 
+## Project Management
+
+Planned features, bugfixes etc can all be viewed at [project.bentasker.co.uk](https://projects.bentasker.co.uk/jira_projects/browse/LOC.html). Release notes are at [bentasker.co.uk](https://www.bentasker.co.uk/documentation/release-notes/91-localchat)
+
+
 
 
 
