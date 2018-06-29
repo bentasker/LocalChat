@@ -821,4 +821,4 @@ if __name__ == '__main__':
     #
     # This will likely become a CLI argument later
     port = int(os.environ.get('PORT', 8090))
-    app.run(host='127.0.0.1', port=port,debug=True,ssl_context='adhoc')
+    app.run(host='127.0.0.1', port=port,ssl_context='adhoc',threaded=False)
