@@ -1,0 +1,25 @@
+---
+
+- name: Install Dependancies
+  apt: name={{item}} state=installed
+  with_items:
+    - python-flask
+    - python-urllib3
+    - python-sqlite
+    - python-bcrypt
+    - python-gnupg
+  become: true
+  tags: deps
+    
+
+    
+    
+    
+    
+    
+-   name: Create Unit File
+    template: src=localchat.service dest=/etc/systemd/system/localchat.service
+    notify: reload systemd
+    become: true
+
+    

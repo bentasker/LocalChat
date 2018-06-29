@@ -1,0 +1,6 @@
+---
+
+-   hosts: localchat-servers
+    roles:
+        - localchat-server
+
