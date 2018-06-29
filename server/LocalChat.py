@@ -758,7 +758,7 @@ class MsgHandler(object):
         
         '''
 
-        crypted = self.gpg.encrypt(msg,None,passphrase=self.syskey,symmetric="AES256",armor=False)
+        crypted = self.gpg.encrypt(msg,None,passphrase=self.syskey,symmetric="AES256",armor=False,encrypt=False)
         return crypted.data.encode('base64')
 
 
