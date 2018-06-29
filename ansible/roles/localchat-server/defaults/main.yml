@@ -1,2 +1,3 @@
-localchat_server_install_path: /usr/local/localchat
+localchat_server_install_path: /usr/local/src/localchat
+localchat_server_install_ver: 0.0.2.1
 

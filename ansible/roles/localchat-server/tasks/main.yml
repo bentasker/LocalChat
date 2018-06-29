@@ -1,25 +1,45 @@
 ---
 
-- name: Install Dependancies
+- name: Install Utils
   apt: name={{item}} state=installed
   with_items:
-    - python-flask
-    - python-urllib3
+    - python-pip
     - python-sqlite
-    - python-bcrypt
-    - python-gnupg
-  become: true
+    - unzip
   tags: deps
-    
 
-    
-    
-    
-    
-    
--   name: Create Unit File
-    template: src=localchat.service dest=/etc/systemd/system/localchat.service
-    notify: reload systemd
-    become: true
+- name: Install Python Dependancies
+  pip: name={{item}} state=present
+  with_items:
+    - flask
+    - werkzeug
+    - bcrypt
+    - gnupg
+    - pyopenssl
+  tags: deps
 
+
+- name: Create install dir
+  file: path={{localchat_server_install_path}} state=directory
+  
+- name: Download and install Server
+  unarchive:
+    src: "https://github.com/bentasker/LocalChat/archive/v{{localchat_server_install_ver}}.zip"
+    dest: "{{localchat_server_install_path}}"
+    remote_src: yes
+  
+- name: Symlink latest
+  file:
+    src: "{{localchat_server_install_path}}/LocalChat-{{localchat_server_install_ver}}/server/LocalChat.py"
+    dest: "{{localchat_server_install_path}}/LocalChat.py"
+    state: link
     
+- name: Create Unit File
+  template: src=localchat.service dest=/etc/systemd/system/localchat.service
+  notify: reload systemd
+
+
+- name: Start server
+  command: systemctl start localchat
+
+

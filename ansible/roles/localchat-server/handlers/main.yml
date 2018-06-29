@@ -7,8 +7,7 @@
 - name: Start service
   # See above.
   command: systemctl start localchat.service
-  become: true
 
 - name: reload systemd
   command: systemctl daemon-reload
-  become: true
+
