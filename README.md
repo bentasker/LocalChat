@@ -46,6 +46,9 @@ Under no circumstances should you configure it to bind to `0.0.0.0` as doing so 
 
 Over time, it will likely be hardened further, but it's unlikely it will ever be considered safe for completely unrestricted access - allowing discoverability would allow adversaries to establish likely meeting places in advance.
 
+### Docker
+
+It's possible to [run the client and the server software in docker](docker/README). This greatly simplifies some of the client dependencies.
 
 
 ### Direct Communication
