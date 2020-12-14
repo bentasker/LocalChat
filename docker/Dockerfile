@@ -10,5 +10,7 @@ RUN apt-get update && apt-get install -y python-pip python-sqlite wget && \
     tar xf v0.0.2.1.tar.gz && \
     rm -f v0.0.2.1.tar.gz && \
     sed -i "s/host='127.0.0.1'/host='0.0.0.0'/g" LocalChat-0.0.2.1/server/LocalChat.py && \
+    useradd -m app && \
     rm -rf /var/lib/apt/lists/*
+USER app
 CMD ["/app/LocalChat-0.0.2.1/server/LocalChat.py"]
