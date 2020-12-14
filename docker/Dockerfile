@@ -2,6 +2,7 @@ FROM ubuntu:16.04
 
 WORKDIR /app
 ENV PORT=8080
+ENV LC_ALL=C.UTF-8
 EXPOSE 8080
 RUN apt-get update && apt-get install -y python-pip python-sqlite wget && \
     pip install --upgrade pip && pip install flask werkzeug bcrypt gnupg pyopenssl && \
