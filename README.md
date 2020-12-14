@@ -48,7 +48,7 @@ Over time, it will likely be hardened further, but it's unlikely it will ever be
 
 ### Docker
 
-It's possible to [run the client and the server software in docker](docker/README). This greatly simplifies some of the client dependencies.
+It's possible to [run the client and the server software in docker](docker/README.md). This greatly simplifies some of the client dependencies.
 
 
 ### Direct Communication
